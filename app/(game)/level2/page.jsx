@@ -67,8 +67,8 @@ export default function Level2Adegan2Page() {
       setShowLockedModal(true);
       return;
     }
-    // Navigate to Level 2 activity or play scene
-    router.push('/play?level=2');
+    // Navigate to Level 2 Orientasi Perawatan activity
+    router.push('/level2/orientasi');
   };
 
   if (loading) {

@@ -153,28 +153,59 @@ export default function GuruDashboardPage() {
         </div>
       </div>
 
-      {/* Banner Rekap Level 1 */}
-      <div className="p-5 rounded-xl bg-gradient-to-r from-amber-950/80 via-emerald-950/60 to-stone-900 border border-yellow-500/50 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-yellow-400/20 border border-yellow-400/60 flex items-center justify-center text-2xl shadow">
-            👥
+      {/* Rekap Evaluasi Games (Level 1 & Level 2) */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Banner Rekap Level 1 */}
+        <div className="p-5 rounded-xl bg-gradient-to-r from-amber-950/80 to-stone-900 border border-yellow-500/50 shadow-xl flex flex-col justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-yellow-400/20 border border-yellow-400/60 flex items-center justify-center text-2xl shadow shrink-0">
+              👥
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-yellow-400 text-base sm:text-lg">
+                Rekap Level 1: Pengenalan Tokoh
+              </h3>
+              <p className="text-xs text-stone-300 mt-1 leading-relaxed">
+                Checklist ciri-ciri & busana 4 tokoh serta isian uraian karakter murid (✓ benar, ✗ salah).
+              </p>
+            </div>
           </div>
-          <div>
-            <h3 className="font-serif font-black text-yellow-400 text-lg">
-              Rekap Hasil Evaluasi Level 1: Orientasi Tokoh
-            </h3>
-            <p className="text-xs text-stone-300">
-              Lihat checklist jawaban murid (ciri-ciri busana & watak 4 tokoh), tanda centang (✓) jika benar, dan tanda (✗) jika salah.
-            </p>
+          <div className="flex justify-end">
+            <Link
+              href="/guru/rekap-level1"
+              className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+            >
+              <span>Buka Rekap Level 1</span>
+              <span>→</span>
+            </Link>
           </div>
         </div>
-        <Link
-          href="/guru/rekap-level1"
-          className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap active:scale-95"
-        >
-          <span>Buka Rekap Level 1</span>
-          <span>→</span>
-        </Link>
+
+        {/* Banner Rekap Level 2 */}
+        <div className="p-5 rounded-xl bg-gradient-to-r from-emerald-950/80 to-stone-900 border border-emerald-500/50 shadow-xl flex flex-col justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-emerald-400/20 border border-emerald-400/60 flex items-center justify-center text-2xl shadow shrink-0">
+              🌿
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-emerald-400 text-base sm:text-lg">
+                Rekap Level 2: Orientasi Perawatan
+              </h3>
+              <p className="text-xs text-stone-300 mt-1 leading-relaxed">
+                Hasil free-transform & drag-and-drop 4 bahan perawatan herbal kanggo Rara Kuning & Rara Runting.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Link
+              href="/guru/rekap-level2"
+              className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+            >
+              <span>Buka Rekap Level 2</span>
+              <span>→</span>
+            </Link>
+          </div>
+        </div>
       </div>
 
       {/* Quick Access / Recent Classes */}
