@@ -1,121 +1,128 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 
 export default function GameMainMenu() {
+  const [audioPlaying, setAudioPlaying] = useState(false);
+  const [hoveredButton, setHoveredButton] = useState(null);
+
   return (
-    <div className="relative w-full h-full min-h-screen flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden">
-      {/* Background Ilustrasi Grojogan Rara Kuning */}
-      <div className="absolute inset-0 z-0">
+    <div className="relative w-screen h-screen bg-[#020b06] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
+      {/* 
+        CONTAINER 1024:410
+        Menjamin koordinat hitbox transparan selalu 100% tepat presisi
+        di atas tombol grafis pada gambar artwork di layar mana pun (HP, tablet, laptop, PC).
+      */}
+      <div className="relative w-full h-full max-w-[calc(100vh*1024/410)] max-h-[calc(100vw*410/1024)] aspect-[1024/410] overflow-hidden shadow-2xl">
+        {/* Background Artwork Halaman Utama */}
         <Image
-          src="/assets/backgrounds/grojogan-rara-kuning.jpg"
-          alt="Latar Belakang Grojogan Rara Kuning"
+          src="/assets/backgrounds/landing-miwiti-dolanan.jpg"
+          alt="Legenda Rara Kuning - Miwiti Dolanan"
           fill
           priority
           sizes="100vw"
-          className="object-cover object-center"
+          className="object-contain object-center"
         />
-        {/* Soft Vignette & Dark Overlay for contrast */}
-        <div className="absolute inset-0 bg-gradient-to-t from-stone-950/85 via-stone-950/40 to-stone-950/60" />
+
+        {/* ========================================================
+            TOP NAVBAR HITBOXES (Menimpa Navigasi Bawaan Gambar)
+           ======================================================== */}
+        
+        {/* Logo / Brand -> Home */}
+        <Link
+          href="/"
+          title="Legenda Rara Kuning"
+          aria-label="Home"
+          className="absolute left-[3.2%] top-[1.2%] w-[21%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/10 transition-all cursor-pointer z-30"
+        />
+
+        {/* Menu -> Beranda */}
+        <Link
+          href="/beranda"
+          title="Menu Beranda"
+          aria-label="Menu"
+          className="absolute left-[29.8%] top-[1.2%] w-[4%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
+        {/* CP/TP -> Capaian lan Tujuan Pasinaon */}
+        <Link
+          href="/cptp"
+          title="Capaian lan Tujuan Pasinaon (CP/TP)"
+          aria-label="CP/TP"
+          className="absolute left-[39.5%] top-[1.2%] w-[4.8%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
+        {/* Tokoh -> Level 1 Orientasi Tokoh */}
+        <Link
+          href="/level1"
+          title="Tantangan Pangenalan Tokoh (Level 1)"
+          aria-label="Tokoh"
+          className="absolute left-[45.2%] top-[1.2%] w-[4.5%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
+        {/* Misi & Ngulandara -> Peta Petualangan */}
+        <Link
+          href="/peta"
+          title="Peta Petualangan"
+          aria-label="Peta Petualangan"
+          className="absolute left-[54.0%] top-[1.2%] w-[8.2%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
+        {/* Evaluasi / Rekap Guru */}
+        <Link
+          href="/guru/rekap-level1"
+          title="Evaluasi & Rekap Guru"
+          aria-label="Evaluasi"
+          className="absolute left-[75.0%] top-[1.2%] w-[6.8%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
+        {/* Audio / Speaker Toggle */}
+        <button
+          type="button"
+          onClick={() => setAudioPlaying((prev) => !prev)}
+          title={audioPlaying ? 'Pateni Swara' : 'Uripake Swara'}
+          aria-label="Toggle Audio"
+          className="absolute left-[91.5%] top-[1.2%] w-[4.5%] h-[8%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-1 hover:ring-yellow-300/50 transition-all cursor-pointer z-30 flex items-center justify-center"
+        >
+          {audioPlaying && (
+            <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping opacity-75" />
+          )}
+        </button>
+
+        {/* ========================================================
+            MAIN ACTION BUTTONS (TRANSPARENT HITBOXES)
+           ======================================================== */}
+
+        {/* 1. TOMBOL: LOGIN MINANGKA GURU */}
+        <Link
+          href="/login?role=guru"
+          onMouseEnter={() => setHoveredButton('guru')}
+          onMouseLeave={() => setHoveredButton(null)}
+          title="Login Minangka Guru"
+          aria-label="Login Minangka Guru"
+          className="absolute left-[20.6%] top-[61.5%] w-[28.5%] h-[24.8%] rounded-[24px] bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 hover:shadow-[0_0_20px_rgba(250,204,21,0.4)] active:scale-[0.98] transition-all duration-150 cursor-pointer z-20 flex items-center justify-center group"
+        >
+          <span className="sr-only">Login Minangka Guru</span>
+        </Link>
+
+        {/* 2. TOMBOL: LOGIN MINANGKA SISWA */}
+        <Link
+          href="/login?role=murid"
+          onMouseEnter={() => setHoveredButton('siswa')}
+          onMouseLeave={() => setHoveredButton(null)}
+          title="Login Minangka Siswa"
+          aria-label="Login Minangka Siswa"
+          className="absolute left-[50.4%] top-[61.5%] w-[28.8%] h-[24.8%] rounded-[24px] bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 hover:shadow-[0_0_20px_rgba(250,204,21,0.4)] active:scale-[0.98] transition-all duration-150 cursor-pointer z-20 flex items-center justify-center group"
+        >
+          <span className="sr-only">Login Minangka Siswa</span>
+        </Link>
       </div>
 
-      {/* Main Container Card */}
-      <div className="relative z-10 max-w-lg w-full flex flex-col items-center text-center gap-5 p-6 sm:p-8 rounded-3xl bg-stone-950/80 backdrop-blur-md border-2 border-yellow-500/60 shadow-2xl">
-        
-        {/* Title Badge */}
-        <div className="px-4 py-1.5 rounded-full bg-amber-950/90 border border-yellow-500/60 text-yellow-300 text-xs font-semibold uppercase tracking-widest shadow-inner">
-          Media Pasinaon Basa Jawa Interaktif
-        </div>
-
-        {/* Game Title */}
-        <div className="flex flex-col items-center gap-1.5">
-          <h1 className="text-3xl sm:text-5xl font-black font-serif tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-yellow-100 via-amber-300 to-yellow-500 drop-shadow-md">
-            HAROKU ADVENTURE
-          </h1>
-          <p className="text-xs sm:text-sm font-serif italic text-amber-200/90 max-w-md">
-            &quot;Mula Bukan Grojogan Rara Kuning & Petualangan Dewi Kilisuci&quot;
-          </p>
-        </div>
-
-        {/* Character Illustration Banner */}
-        <div className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-amber-950/80 via-stone-900/90 to-emerald-950/80 border border-amber-600/50 flex items-center justify-around shadow-inner">
-          <div className="flex flex-col items-center">
-            <span className="text-3xl sm:text-4xl drop-shadow">👸</span>
-            <span className="text-[11px] text-amber-200 font-bold mt-1">Dewi Kilisuci</span>
-          </div>
-          <div className="text-sm text-yellow-500 font-bold opacity-80">✦</div>
-          <div className="flex flex-col items-center">
-            <span className="text-3xl sm:text-4xl drop-shadow">👑</span>
-            <span className="text-[11px] text-yellow-300 font-bold mt-1">Putri Rara Kuning</span>
-          </div>
-          <div className="text-sm text-yellow-500 font-bold opacity-80">✦</div>
-          <div className="flex flex-col items-center">
-            <span className="text-3xl sm:text-4xl drop-shadow">🌊</span>
-            <span className="text-[11px] text-cyan-300 font-bold mt-1">Grojogan Suci</span>
-          </div>
-        </div>
-
-        {/* Role Action Buttons */}
-        <div className="w-full flex flex-col gap-3.5 mt-1">
-          {/* Tombol Siswa */}
-          <Link
-            href="/login?role=murid"
-            className="group relative w-full h-16 sm:h-20 rounded-2xl overflow-hidden border-2 border-yellow-500/80 shadow-lg hover:shadow-yellow-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 bg-emerald-950"
-          >
-            <Image
-              src="/assets/buttons/btn-login-siswa.png"
-              alt="Login Minangka Siswa"
-              fill
-              priority
-              sizes="(max-width: 640px) 100vw, 480px"
-              className="object-cover object-center group-hover:brightness-105 transition-all"
-            />
-          </Link>
-
-          {/* Tombol Guru */}
-          <Link
-            href="/login?role=guru"
-            className="group relative w-full h-16 sm:h-20 rounded-2xl overflow-hidden border-2 border-yellow-500/80 shadow-lg hover:shadow-yellow-500/40 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 bg-emerald-950"
-          >
-            <Image
-              src="/assets/buttons/btn-login-guru-clean.png"
-              alt="Login Minangka Guru"
-              fill
-              priority
-              sizes="(max-width: 640px) 100vw, 480px"
-              className="object-cover object-center group-hover:brightness-105 transition-all"
-            />
-          </Link>
-
-          {/* Tombol Khusus Capaian & Tujuan Pasinaon (CP/TP) */}
-          <Link
-            href="/cptp"
-            className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-emerald-900 via-emerald-800 to-emerald-900 hover:from-emerald-800 hover:to-emerald-700 border-2 border-emerald-500/80 text-yellow-300 font-bold text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="text-base">📖</span>
-            <span>Capaian lan Tujuan Pasinaon (CP/TP)</span>
-            <span className="text-yellow-400 font-bold ml-1">→</span>
-          </Link>
-
-          {/* Navigasi Tambahan */}
-          <div className="w-full mt-1">
-            <Link
-              href="/play"
-              className="w-full py-3 px-4 rounded-xl bg-gradient-to-r from-amber-700 via-amber-600 to-amber-700 hover:from-amber-600 hover:to-amber-500 border border-yellow-400 text-yellow-100 font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-all flex items-center justify-center gap-2"
-            >
-              <span>▶</span> Langsung Main Petualangan
-            </Link>
-          </div>
-        </div>
-
-        {/* Footer info */}
-        <div className="pt-1 text-center">
-          <p className="text-[11px] text-stone-300 font-sans">
-            Aplikasi Pasinaon Carita Rakyat Jawa Kanthi Petualangan 2D
-          </p>
-        </div>
+      {/* Petunjuk tampilan lanskap khusus layar portrait sempit */}
+      <div className="absolute bottom-2 text-[10px] text-amber-200/60 sm:hidden pointer-events-none">
+        💡 Putar piranti menyang posisi lanskap kanggo tampilan maksimal
       </div>
     </div>
   );
