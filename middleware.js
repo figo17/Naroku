@@ -34,7 +34,7 @@ export async function middleware(request) {
 
   const { pathname } = request.nextUrl;
 
-  // Allow keep-alive API endpoint and public static assets without interception
+  // 1. Allow keep-alive API endpoint and public static assets without interception
   if (
     pathname.startsWith('/api/keep-alive') ||
     pathname.startsWith('/_next') ||
@@ -43,14 +43,32 @@ export async function middleware(request) {
     return supabaseResponse;
   }
 
+  // 2. Legacy /join-class redirect handling (Fitur kelas & kode kelas sudah dihapus)
+  if (pathname.startsWith('/join-class')) {
+    const url = request.nextUrl.clone();
+    const level = request.nextUrl.searchParams.get('level');
+    if (level === '1') {
+      url.pathname = '/level1';
+      url.search = '';
+    } else if (level) {
+      url.pathname = '/play';
+    } else {
+      url.pathname = '/beranda';
+      url.search = '';
+    }
+    return NextResponse.redirect(url);
+  }
+
   const isProtectedPath =
     pathname.startsWith('/admin') ||
     pathname.startsWith('/guru') ||
     pathname.startsWith('/play') ||
+    pathname.startsWith('/peta') ||
+    pathname.startsWith('/level1') ||
     pathname.startsWith('/profile') ||
     pathname.startsWith('/beranda');
 
-  // If not authenticated and trying to access protected route -> redirect to /login
+  // 3. If not authenticated and trying to access protected route -> redirect to /login
   if (!user) {
     if (isProtectedPath) {
       const url = request.nextUrl.clone();
@@ -60,41 +78,39 @@ export async function middleware(request) {
     return supabaseResponse;
   }
 
-  // Fetch user profile to check role and class_id
+  // 4. Fetch user profile to check role
   let role = 'murid';
-  let classId = null;
 
   try {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('role, class_id')
+      .select('role')
       .eq('id', user.id)
       .single();
 
     if (profile) {
       role = profile.role || 'murid';
-      classId = profile.class_id || null;
     }
   } catch (err) {
     // Fallback to default murid role on error
     role = 'murid';
   }
 
-  // Helper function to resolve default home page for a given role/class
+  // Helper function to resolve default home page for a given role
   const getRoleHomePage = () => {
     if (role === 'admin') return '/admin';
     if (role === 'guru') return '/guru';
     return '/beranda';
   };
 
-  // Logged-in user visiting /login -> redirect to role home page
+  // 5. Logged-in user visiting /login -> redirect to role home page
   if (pathname === '/login') {
     const url = request.nextUrl.clone();
     url.pathname = getRoleHomePage();
     return NextResponse.redirect(url);
   }
 
-  // Protect /admin routes (admin only)
+  // 6. Protect /admin routes (admin only)
   if (pathname.startsWith('/admin')) {
     if (role !== 'admin') {
       const url = request.nextUrl.clone();
@@ -104,7 +120,7 @@ export async function middleware(request) {
     return supabaseResponse;
   }
 
-  // Protect /guru routes (guru only)
+  // 7. Protect /guru routes (guru only)
   if (pathname.startsWith('/guru')) {
     if (role !== 'guru') {
       const url = request.nextUrl.clone();
@@ -114,31 +130,16 @@ export async function middleware(request) {
     return supabaseResponse;
   }
 
-  // Protect /play and /profile (murid with class_id)
-  if (pathname.startsWith('/play') || pathname.startsWith('/profile')) {
+  // 8. Protect murid routes (/play, /peta, /level1, /profile, /beranda)
+  if (
+    pathname.startsWith('/play') ||
+    pathname.startsWith('/peta') ||
+    pathname.startsWith('/level1') ||
+    pathname.startsWith('/profile')
+  ) {
     if (role !== 'murid') {
       const url = request.nextUrl.clone();
       url.pathname = getRoleHomePage();
-      return NextResponse.redirect(url);
-    }
-    if (!classId) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/join-class';
-      return NextResponse.redirect(url);
-    }
-    return supabaseResponse;
-  }
-
-  // Protect /join-class (murid without class_id)
-  if (pathname.startsWith('/join-class')) {
-    if (role !== 'murid') {
-      const url = request.nextUrl.clone();
-      url.pathname = getRoleHomePage();
-      return NextResponse.redirect(url);
-    }
-    if (classId) {
-      const url = request.nextUrl.clone();
-      url.pathname = '/play';
       return NextResponse.redirect(url);
     }
     return supabaseResponse;
