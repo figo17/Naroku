@@ -59,6 +59,7 @@ export default function Level1OrientasiTokohPage() {
   // Modal dialogs
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
+  const [showUnlockLevel2Modal, setShowUnlockLevel2Modal] = useState(false);
 
   const currentChar = charactersLevel1[activeCharIndex];
 
@@ -185,11 +186,23 @@ export default function Level1OrientasiTokohPage() {
       if (error) throw error;
 
       setHasSavedEssayBefore(true);
-      setEssayToast({
-        type: 'success',
-        msg: '✓ Wangsulan kasil disimpen! Guru bisa mriksani wangsulanmu.',
-      });
-      setTimeout(() => setEssayToast(null), 4000);
+
+      const allDone = Boolean(
+        essayAnswers.tokoh1?.trim() &&
+        essayAnswers.tokoh2?.trim() &&
+        essayAnswers.tokoh3?.trim() &&
+        essayAnswers.tokoh4?.trim()
+      );
+
+      if (allDone) {
+        setShowUnlockLevel2Modal(true);
+      } else {
+        setEssayToast({
+          type: 'success',
+          msg: '✓ Wangsulan kasil disimpen! Isi kabeh 4 tokoh kanggo mbukak Level 2.',
+        });
+        setTimeout(() => setEssayToast(null), 4000);
+      }
     } catch (err) {
       console.error('Error saving essay:', err);
       setEssayToast({
@@ -605,7 +618,7 @@ export default function Level1OrientasiTokohPage() {
         )}
 
         {/* ========================================================
-            FLOATING TOP SWITCHER: GANTI MODE TAMPILAN
+            FLOATING TOP SWITCHER: GANTI MODE TAMPILAN & LEVEL 2
            ======================================================== */}
         <div className="absolute top-2.5 right-[18%] z-40 hidden sm:flex items-center gap-1.5 bg-stone-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-yellow-500/50 shadow-xl">
           <button
@@ -617,7 +630,7 @@ export default function Level1OrientasiTokohPage() {
                 : 'text-amber-200/80 hover:text-yellow-300 hover:bg-amber-950/40'
             }`}
           >
-            📝 Tantangan Nulis (Uraian)
+            📝 Tantangan Nulis
           </button>
           <button
             type="button"
@@ -628,7 +641,54 @@ export default function Level1OrientasiTokohPage() {
                 : 'text-amber-200/80 hover:text-yellow-300 hover:bg-amber-950/40'
             }`}
           >
-            ✓ Tantangan Centhang Ciri
+            ✓ Centhang Ciri
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              const allDone = Boolean(
+                essayAnswers.tokoh1?.trim() &&
+                essayAnswers.tokoh2?.trim() &&
+                essayAnswers.tokoh3?.trim() &&
+                essayAnswers.tokoh4?.trim()
+              );
+              if (allDone) {
+                router.push('/level2');
+              } else {
+                const missing = [];
+                if (!essayAnswers.tokoh1?.trim()) missing.push('Tokoh 1');
+                if (!essayAnswers.tokoh2?.trim()) missing.push('Tokoh 2');
+                if (!essayAnswers.tokoh3?.trim()) missing.push('Tokoh 3');
+                if (!essayAnswers.tokoh4?.trim()) missing.push('Tokoh 4');
+                setEssayToast({
+                  type: 'error',
+                  msg: `⚠️ Isi dhisik 4 tokoh sadurunge menyang Level 2! (Kurang: ${missing.join(', ')})`,
+                });
+                setTimeout(() => setEssayToast(null), 4500);
+              }
+            }}
+            className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
+              Boolean(
+                essayAnswers.tokoh1?.trim() &&
+                essayAnswers.tokoh2?.trim() &&
+                essayAnswers.tokoh3?.trim() &&
+                essayAnswers.tokoh4?.trim()
+              )
+                ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-stone-950 shadow-lg font-black hover:scale-105'
+                : 'bg-stone-800/90 text-stone-400 hover:text-stone-300 hover:bg-stone-800'
+            }`}
+          >
+            <span>
+              {Boolean(
+                essayAnswers.tokoh1?.trim() &&
+                essayAnswers.tokoh2?.trim() &&
+                essayAnswers.tokoh3?.trim() &&
+                essayAnswers.tokoh4?.trim()
+              )
+                ? '🔓'
+                : '🔒'}
+            </span>
+            <span>Level 2 ➜</span>
           </button>
         </div>
 
@@ -657,6 +717,43 @@ export default function Level1OrientasiTokohPage() {
         )}
 
       </div>
+
+      {/* ========================================================
+          MODAL: LEVEL 2 KABUKAK (LEVEL 2 UNLOCKED)
+         ======================================================== */}
+      {showUnlockLevel2Modal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md animate-fade-in font-sans">
+          <div className="relative max-w-md w-full bg-stone-900 border-2 border-emerald-500/80 rounded-2xl p-6 shadow-2xl text-center text-stone-100">
+            <div className="w-16 h-16 rounded-full bg-emerald-950/80 border-2 border-emerald-500/80 text-emerald-400 text-3xl flex items-center justify-center mx-auto mb-4 shadow-lg animate-bounce">
+              🎉
+            </div>
+
+            <h3 className="text-xl font-serif font-black text-yellow-400">
+              Sampurna! Level 2 Wis Kabukak!
+            </h3>
+
+            <p className="mt-3 text-xs sm:text-sm text-stone-300 leading-relaxed">
+              Kabeh wangsulan 4 tokoh ing Level 1 kasil disimpen lan lengkap. Panjenengan wis siap nglajengake lelampahan menyang <strong>Adegan 2: Cengkorongan Crita</strong>!
+            </p>
+
+            <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
+              <Link
+                href="/level2"
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-yellow-500 hover:from-emerald-400 hover:to-yellow-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>➜</span> Lanjut menyang Adegan 2
+              </Link>
+              <button
+                type="button"
+                onClick={() => setShowUnlockLevel2Modal(false)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 font-bold text-xs sm:text-sm transition-all"
+              >
+                Tetep ing Kene
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           MODAL: PITUDUH CARA NGERJAKAKE (HELP)

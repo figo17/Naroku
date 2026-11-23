@@ -12,6 +12,8 @@ export default function PetaPetualanganPage() {
   const [studentProfile, setStudentProfile] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [hoveredLevel, setHoveredLevel] = useState(null);
+  const [isLevel1Done, setIsLevel1Done] = useState(false);
+  const [showLockToast, setShowLockToast] = useState(false);
 
   useEffect(() => {
     async function checkAuth() {
@@ -33,6 +35,21 @@ export default function PetaPetualanganPage() {
       if (profile) {
         setStudentProfile(profile);
       }
+
+      // Check if student completed Level 1 essay
+      const { data: essayData } = await supabase
+        .from('level1_essay_answers')
+        .select('tokoh1_answer, tokoh2_answer, tokoh3_answer, tokoh4_answer')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      const allDone = Boolean(
+        essayData?.tokoh1_answer?.trim() &&
+        essayData?.tokoh2_answer?.trim() &&
+        essayData?.tokoh3_answer?.trim() &&
+        essayData?.tokoh4_answer?.trim()
+      );
+      setIsLevel1Done(allDone);
     }
 
     checkAuth();
@@ -109,8 +126,15 @@ export default function PetaPetualanganPage() {
         </Link>
 
         {/* ---------------- LEVEL 2: CENGKORONGAN CRITA ---------------- */}
-        <Link
-          href="/play?level=2"
+        <div
+          onClick={() => {
+            if (isLevel1Done) {
+              router.push('/level2');
+            } else {
+              setShowLockToast(true);
+              setTimeout(() => setShowLockToast(false), 4500);
+            }
+          }}
           onMouseEnter={() => setHoveredLevel(2)}
           onMouseLeave={() => setHoveredLevel(null)}
           title="Level 2: Cengkorongan Crita (Balungan Cerita)"
@@ -119,9 +143,9 @@ export default function PetaPetualanganPage() {
         >
           {/* Tooltip Indikator Level 2 */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none mb-1 px-3 py-1 bg-black/85 border border-yellow-400/80 rounded-full text-yellow-300 text-[10px] sm:text-xs font-bold tracking-wide shadow-lg flex items-center gap-1.5 whitespace-nowrap">
-            <span>▶</span> Miwiti Level 2
+            <span>{isLevel1Done ? '▶ Miwiti Level 2' : '🔒 Level 2 (Isih Dikunci)'}</span>
           </div>
-        </Link>
+        </div>
 
         {/* ---------------- LEVEL 3: NULIS ---------------- */}
         <Link
@@ -161,6 +185,33 @@ export default function PetaPetualanganPage() {
             <span>📖</span> Capaian Pasinaon
           </Link>
         </div>
+
+        {/* ========================================================
+            ALERT TOAST: LEVEL 2 ISIH DIKUNCI
+           ======================================================== */}
+        {showLockToast && (
+          <div className="absolute top-16 left-1/2 -translate-x-1/2 z-50 max-w-md w-full px-4 pointer-events-auto animate-bounce">
+            <div className="bg-stone-900/95 border-2 border-red-500/80 rounded-2xl p-4 shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 text-stone-100">
+              <div className="flex items-center gap-2.5">
+                <span className="text-2xl">🔒</span>
+                <div>
+                  <p className="font-bold text-yellow-400 text-xs sm:text-sm">
+                    Level 2 Isih Dikunci!
+                  </p>
+                  <p className="text-[11px] text-stone-300">
+                    Rampungake lan simpen wangsulan 4 tokoh ing Level 1 dhisik.
+                  </p>
+                </div>
+              </div>
+              <Link
+                href="/level1"
+                className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs shadow-md whitespace-nowrap"
+              >
+                Bukak Level 1 ➜
+              </Link>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
