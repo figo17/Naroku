@@ -90,6 +90,10 @@ export default function StudentHomePage() {
           <span>›</span>
           <span className="hover:text-yellow-400 transition-colors cursor-pointer">Misi</span>
           <span>›</span>
+          <Link href="/peta" className="hover:text-yellow-400 transition-colors">
+            Peta Petualangan
+          </Link>
+          <span>›</span>
           <Link href="/play" className="hover:text-yellow-400 transition-colors">
             Ngulandara
           </Link>
@@ -150,9 +154,9 @@ export default function StudentHomePage() {
 
         {/* HITBOX TOMBOL TRANSPARAN */}
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 mt-14 sm:mt-24 w-full max-w-2xl">
-          {/* Hitbox 1: Tombol MIWITI DOLANAN */}
+          {/* Hitbox 1: Tombol MIWITI DOLANAN -> Peta Petualangan */}
           <Link
-            href="/play"
+            href="/peta"
             aria-label="Miwiti Dolanan"
             title="Miwiti Dolanan"
             className="w-full sm:w-[270px] h-[58px] sm:h-[64px] rounded-2xl bg-transparent opacity-0 hover:opacity-100 hover:bg-white/10 hover:ring-2 hover:ring-yellow-300/40 active:scale-95 transition-all duration-150 cursor-pointer"

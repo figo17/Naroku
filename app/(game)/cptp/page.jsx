@@ -50,15 +50,13 @@ export default function CpTpPage() {
 
         {/* Breadcrumbs Navigation */}
         <nav className="hidden lg:flex items-center gap-2 text-xs font-medium text-emerald-300/80">
-          <Link href="/" className="hover:text-yellow-400 transition-colors">Menu</Link>
+          <Link href="/beranda" className="hover:text-yellow-400 transition-colors">Menu</Link>
           <span>›</span>
           <span className="hover:text-yellow-400 transition-colors cursor-pointer">Materi</span>
           <span>›</span>
           <span className="text-yellow-400 font-bold border-b border-yellow-400 pb-0.5">CP/TP</span>
           <span>›</span>
-          <span className="hover:text-yellow-400 transition-colors cursor-pointer">Tokoh</span>
-          <span>›</span>
-          <span className="hover:text-yellow-400 transition-colors cursor-pointer">Misi</span>
+          <Link href="/peta" className="hover:text-yellow-400 transition-colors">Peta Petualangan</Link>
           <span>›</span>
           <Link href="/play" className="hover:text-yellow-400 transition-colors">Ngulandara</Link>
           <span>›</span>

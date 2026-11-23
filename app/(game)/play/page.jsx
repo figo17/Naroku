@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import React, { useEffect, useState, useCallback, useRef, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { useGameStore } from '@/store/useGameStore';
 import { useInventoryStore } from '@/store/useInventoryStore';
@@ -23,8 +23,9 @@ import { mapHutanWilis } from '@/data/maps/mapHutanWilis';
 import { mapGrojogan } from '@/data/maps/mapGrojogan';
 import { dialogs } from '@/data/dialogs';
 
-export default function PlayPage() {
+function PlayPageContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const supabase = createClient();
 
   const [studentProfile, setStudentProfile] = useState(null);
@@ -92,7 +93,23 @@ export default function PlayPage() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (progress) {
+        const levelParam = searchParams?.get('level');
+        if (levelParam === '1') {
+          setMap('keraton');
+          setPos({ x: 5, y: 5 });
+          setQuestStage(1);
+          setIsCompleted(false);
+        } else if (levelParam === '2') {
+          setMap('hutan_wilis');
+          setPos({ x: 2, y: 2 });
+          setQuestStage(2);
+          setIsCompleted(false);
+        } else if (levelParam === '3') {
+          setMap('grojogan');
+          setPos({ x: 7, y: 13 });
+          setQuestStage(3);
+          setIsCompleted(false);
+        } else if (progress) {
           setMap(progress.current_map || 'keraton');
           setPos({ x: progress.pos_x ?? 5, y: progress.pos_y ?? 5 });
           setQuestStage(progress.quest_stage ?? 1);
@@ -378,5 +395,19 @@ export default function PlayPage() {
       <GlossaryModal />
       <InventoryModal />
     </div>
+  );
+}
+
+export default function PlayPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="w-screen h-screen bg-[#061e12] flex items-center justify-center text-yellow-300 font-bold">
+          Memuat Petualangan Haroku...
+        </div>
+      }
+    >
+      <PlayPageContent />
+    </Suspense>
   );
 }

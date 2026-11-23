@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 import { useUIStore } from '@/store/useUIStore';
 import { useGameStore } from '@/store/useGameStore';
 
@@ -50,6 +51,16 @@ export default function HUD({ studentName = 'Dewi Kilisuci' }) {
 
       {/* Right: Quick Action Buttons */}
       <div className="flex items-center gap-2 sm:gap-3">
+        {/* Peta Petualangan */}
+        <Link
+          href="/peta"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-950/80 hover:bg-teal-900 border-2 border-teal-600 text-teal-100 text-xs sm:text-sm font-semibold shadow-md active:scale-95 transition-all"
+          title="Bali menyang Peta Petualangan"
+        >
+          <span className="text-base sm:text-lg">🗺️</span>
+          <span className="hidden sm:inline">Peta</span>
+        </Link>
+
         {/* Tas / Inventory */}
         <button
           onClick={() => toggleInventory(true)}
