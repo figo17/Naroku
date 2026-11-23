@@ -59,6 +59,7 @@ export default function GuruLayout({ children }) {
 
   const navItems = [
     { label: "Dashboard", href: "/guru", icon: "📊" },
+    { label: "Rekap Level 1", href: "/guru/rekap-level1", icon: "👥" },
     { label: "Kelas Saya", href: "/guru/kelas", icon: "🏫" },
     { label: "Bank Soal", href: "/guru/quizzes", icon: "📝" },
   ];

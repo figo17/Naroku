@@ -153,6 +153,30 @@ export default function GuruDashboardPage() {
         </div>
       </div>
 
+      {/* Banner Rekap Level 1 */}
+      <div className="p-5 rounded-xl bg-gradient-to-r from-amber-950/80 via-emerald-950/60 to-stone-900 border border-yellow-500/50 shadow-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-xl bg-yellow-400/20 border border-yellow-400/60 flex items-center justify-center text-2xl shadow">
+            👥
+          </div>
+          <div>
+            <h3 className="font-serif font-black text-yellow-400 text-lg">
+              Rekap Hasil Evaluasi Level 1: Orientasi Tokoh
+            </h3>
+            <p className="text-xs text-stone-300">
+              Lihat checklist jawaban murid (ciri-ciri busana & watak 4 tokoh), tanda centang (✓) jika benar, dan tanda (✗) jika salah.
+            </p>
+          </div>
+        </div>
+        <Link
+          href="/guru/rekap-level1"
+          className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap active:scale-95"
+        >
+          <span>Buka Rekap Level 1</span>
+          <span>→</span>
+        </Link>
+      </div>
+
       {/* Quick Access / Recent Classes */}
       <div className="space-y-4">
         <div className="flex items-center justify-between">

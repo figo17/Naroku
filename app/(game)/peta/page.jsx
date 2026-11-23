@@ -95,7 +95,7 @@ export default function PetaPetualanganPage() {
 
         {/* ---------------- LEVEL 1: ORIENTASI TOKOH ---------------- */}
         <Link
-          href="/play?level=1"
+          href="/level1"
           onMouseEnter={() => setHoveredLevel(1)}
           onMouseLeave={() => setHoveredLevel(null)}
           title="Level 1: Orientasi Tokoh"
@@ -104,7 +104,7 @@ export default function PetaPetualanganPage() {
         >
           {/* Tooltip Indikator Level 1 */}
           <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none mb-1 px-3 py-1 bg-black/85 border border-yellow-400/80 rounded-full text-yellow-300 text-[10px] sm:text-xs font-bold tracking-wide shadow-lg flex items-center gap-1.5 whitespace-nowrap">
-            <span>▶</span> Miwiti Level 1
+            <span>▶</span> Miwiti Level 1 (Orientasi Tokoh)
           </div>
         </Link>
 
