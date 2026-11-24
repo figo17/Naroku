@@ -223,14 +223,24 @@ export default function Level2NanjakPage() {
           <span className="sr-only">Simpan</span>
         </button>
 
-        {/* Tombol Navigasi Bali menyang Asil Perawatan (Kiri Bawah) */}
-        <div className="absolute bottom-2.5 left-4 z-30">
+        {/* Tombol Navigasi Bali & Lanjut di Pojok Bawah */}
+        <div className="absolute bottom-2.5 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
           <Link
             href="/level2/orientasi/hasil"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/80 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
+            className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/80 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
             <span>⬅</span> Bali menyang Asil Perawatan
           </Link>
+
+          {answer?.trim() && (
+            <Link
+              href="/level2/mucuk"
+              className="pointer-events-auto flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-yellow-500/90 hover:bg-yellow-400 border border-yellow-300 text-stone-950 text-[10px] sm:text-xs font-black shadow-lg active:scale-95 transition-all animate-pulse"
+            >
+              <span>Banjur menyang Adegan Mucuk</span>
+              <span>➡</span>
+            </Link>
+          )}
         </div>
       </div>
 
@@ -281,10 +291,10 @@ export default function Level2NanjakPage() {
                 Deleng Wangsulan
               </button>
               <Link
-                href="/peta"
+                href="/level2/mucuk"
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>🗺️</span> Lanjut menyang Peta Petualangan →
+                <span>📜</span> Lanjut menyang Adegan Mucuk (Banjur →)
               </Link>
             </div>
           </div>
