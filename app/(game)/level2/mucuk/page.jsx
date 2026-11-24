@@ -91,8 +91,8 @@ export default function Level2MucukPage() {
            ======================================================== */}
         <button
           type="button"
-          onClick={() => router.push('/peta')}
-          title="Banjur menyang Peta Petualangan"
+          onClick={() => router.push('/level2/alas')}
+          title="Banjur menyang Alas Gunung Wilis"
           className="absolute left-[67.9%] top-[86.8%] w-[9.2%] h-[7.0%] rounded-lg bg-transparent hover:bg-yellow-400/25 hover:ring-2 hover:ring-yellow-300 hover:shadow-[0_0_20px_rgba(250,204,21,0.7)] active:scale-[0.96] transition-all duration-200 cursor-pointer z-30 flex items-center justify-center"
         >
           <span className="sr-only">Banjur</span>
@@ -100,7 +100,7 @@ export default function Level2MucukPage() {
 
         {/* ========================================================
             D-PAD NAVIGASI DI KIRI BAWAH
-            (Tombol Kiri: Kembali ke Nanjak, Tombol Kanan: Banjur ke Peta)
+            (Tombol Kiri: Kembali ke Nanjak, Tombol Kanan: Banjur ke Alas)
            ======================================================== */}
         {/* Tombol Kiri (⬅) */}
         <button
@@ -115,8 +115,8 @@ export default function Level2MucukPage() {
         {/* Tombol Kanan (➡) */}
         <button
           type="button"
-          onClick={() => router.push('/peta')}
-          title="Banjur menyang Peta Petualangan"
+          onClick={() => router.push('/level2/alas')}
+          title="Banjur menyang Alas Gunung Wilis"
           className="absolute left-[9.7%] top-[77.0%] w-[4.0%] h-[15.0%] rounded-lg bg-transparent hover:bg-yellow-400/20 active:scale-95 transition-all cursor-pointer z-30"
         >
           <span className="sr-only">Banjur</span>
@@ -185,10 +185,10 @@ export default function Level2MucukPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/peta')}
+                onClick={() => router.push('/level2/alas')}
                 className="px-5 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs shadow-md active:scale-95 transition"
               >
-                Banjur menyang Peta Petualangan →
+                Banjur menyang Alas Gunung Wilis →
               </button>
             </div>
           </div>
