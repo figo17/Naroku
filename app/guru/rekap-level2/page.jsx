@@ -8,8 +8,10 @@ export default function RekapLevel2Page() {
   const supabase = createClient();
   const [loading, setLoading] = useState(true);
   const [students, setStudents] = useState([]);
-  const [results, setResults] = useState([]);
+  const [orientasiResults, setOrientasiResults] = useState([]);
+  const [nanjakAnswers, setNanjakAnswers] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
+  const [activeTab, setActiveTab] = useState("semua"); // 'semua' | 'perawatan' | 'nulis'
   const [selectedStudent, setSelectedStudent] = useState(null);
 
   useEffect(() => {
@@ -26,16 +28,25 @@ export default function RekapLevel2Page() {
 
         if (stuErr) console.error("Error loading students:", stuErr);
 
-        // 2. Fetch Level 2 Orientasi results
+        // 2. Fetch Level 2 Orientasi results (perawatan herbal)
         const { data: resData, error: resErr } = await supabase
           .from("level2_orientasi_results")
           .select("*")
           .order("updated_at", { ascending: false });
 
-        if (resErr) console.error("Error loading level 2 results:", resErr);
+        if (resErr) console.error("Error loading level 2 orientasi results:", resErr);
+
+        // 3. Fetch Level 2 Nanjak answers (tugas nulis)
+        const { data: nanjakData, error: nanjakErr } = await supabase
+          .from("level2_nanjak_answers")
+          .select("*")
+          .order("updated_at", { ascending: false });
+
+        if (nanjakErr) console.error("Error loading level 2 nanjak answers:", nanjakErr);
 
         setStudents(studentsData || []);
-        setResults(resData || []);
+        setOrientasiResults(resData || []);
+        setNanjakAnswers(nanjakData || []);
       } catch (err) {
         console.error("Rekap Level 2 error:", err);
       } finally {
@@ -47,9 +58,14 @@ export default function RekapLevel2Page() {
   }, [supabase]);
 
   // Map results by user_id
-  const resultsMap = {};
-  results.forEach((r) => {
-    resultsMap[r.user_id] = r;
+  const orientasiMap = {};
+  orientasiResults.forEach((r) => {
+    orientasiMap[r.user_id] = r;
+  });
+
+  const nanjakMap = {};
+  nanjakAnswers.forEach((a) => {
+    nanjakMap[a.user_id] = a;
   });
 
   // Filter students
@@ -61,8 +77,8 @@ export default function RekapLevel2Page() {
   });
 
   const totalStudents = students.length;
-  const completedCount = results.filter((r) => r.is_completed).length;
-  const inProgressCount = results.filter((r) => !r.is_completed).length;
+  const completedOrientasiCount = orientasiResults.filter((r) => r.is_completed).length;
+  const completedNanjakCount = nanjakAnswers.filter((a) => a.answer && a.answer.trim().length > 0).length;
 
   const getItemLabel = (id) => {
     const it = treatmentItems?.find((t) => t.id === id);
@@ -75,10 +91,10 @@ export default function RekapLevel2Page() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold font-serif text-yellow-400 tracking-wide flex items-center gap-2">
-            <span>🌿</span> Rekap Hasil Level 2: Orientasi Perawatan
+            <span>🌿</span> Rekap Hasil Level 2 (Orientasi & Tugas Nulis Nanjak)
           </h1>
           <p className="text-stone-400 text-xs sm:text-sm mt-1">
-            Rekap hasil interaktif free-transform murid dalam nambani lara Rara Kuning lan Rara Runting kanthi bahan herbal trep.
+            Rekap pengerjaan murid: Pasangan perawatan herbal (Orientasi) & tulisan 2-3 ukara bab lara para putri (Nanjak).
           </p>
         </div>
 
@@ -103,35 +119,69 @@ export default function RekapLevel2Page() {
         </div>
 
         <div className="p-4 rounded-xl bg-emerald-950/40 border border-emerald-800/80 shadow">
-          <p className="text-xs uppercase font-semibold tracking-wider text-emerald-400">Selesai 4 Perawatan</p>
+          <p className="text-xs uppercase font-semibold tracking-wider text-emerald-400">
+            Perawatan Herbal (Orientasi)
+          </p>
           <div className="flex items-baseline gap-2 mt-1">
-            <span className="text-3xl font-extrabold font-serif text-emerald-400">{completedCount}</span>
+            <span className="text-3xl font-extrabold font-serif text-emerald-400">
+              {completedOrientasiCount}
+            </span>
             <span className="text-xs text-stone-400">
-              ({totalStudents > 0 ? Math.round((completedCount / totalStudents) * 100) : 0}%)
+              ({totalStudents > 0 ? Math.round((completedOrientasiCount / totalStudents) * 100) : 0}% rampung)
             </span>
           </div>
         </div>
 
         <div className="p-4 rounded-xl bg-amber-950/40 border border-amber-800/80 shadow">
-          <p className="text-xs uppercase font-semibold tracking-wider text-amber-400">Sedang Mengerjakan</p>
-          <p className="text-3xl font-extrabold font-serif text-yellow-400 mt-1">{inProgressCount}</p>
+          <p className="text-xs uppercase font-semibold tracking-wider text-yellow-400">
+            Tugas Nulis (Nanjak)
+          </p>
+          <div className="flex items-baseline gap-2 mt-1">
+            <span className="text-3xl font-extrabold font-serif text-yellow-400">
+              {completedNanjakCount}
+            </span>
+            <span className="text-xs text-stone-400">
+              ({totalStudents > 0 ? Math.round((completedNanjakCount / totalStudents) * 100) : 0}% terisi)
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* Kunci Jawaban Info Banner */}
-      <div className="p-4 rounded-xl bg-stone-900 border border-yellow-500/30 flex flex-col md:flex-row md:items-center justify-between gap-3 text-xs text-stone-300">
-        <div className="flex items-start gap-3">
-          <span className="text-2xl">💡</span>
-          <div>
-            <p className="font-bold text-yellow-400 text-sm">Pedoman Kunci Perawatan Tokoh:</p>
-            <p className="mt-0.5">
-              • <strong className="text-yellow-200">Rara Kuning</strong> (Gondhok & Kulit sisik): <span className="underline">Kompres daun herba</span> & <span className="underline">Lulur rempah</span>
-            </p>
-            <p>
-              • <strong className="text-emerald-300">Rara Runting</strong> (Lara kuning): <span className="underline">Adus ramuan</span> & <span className="underline">Ramuan jamu</span>
-            </p>
-          </div>
-        </div>
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 border-b border-stone-800 pb-3">
+        <button
+          type="button"
+          onClick={() => setActiveTab("semua")}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            activeTab === "semua"
+              ? "bg-yellow-500 text-stone-950 shadow"
+              : "bg-stone-900 text-stone-400 hover:text-stone-200"
+          }`}
+        >
+          Kabeh Rekap (Ringkesan)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("perawatan")}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            activeTab === "perawatan"
+              ? "bg-emerald-600 text-white shadow"
+              : "bg-stone-900 text-stone-400 hover:text-stone-200"
+          }`}
+        >
+          🌿 Perawatan Herbal (Orientasi)
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("nulis")}
+          className={`px-4 py-2 rounded-lg text-xs font-bold transition ${
+            activeTab === "nulis"
+              ? "bg-amber-600 text-white shadow"
+              : "bg-stone-900 text-stone-400 hover:text-stone-200"
+          }`}
+        >
+          🪶 Tugas Nulis (Nanjak)
+        </button>
       </div>
 
       {/* Student List Table */}
@@ -143,9 +193,13 @@ export default function RekapLevel2Page() {
                 <th className="py-3 px-4">No</th>
                 <th className="py-3 px-4">Nama Murid</th>
                 <th className="py-3 px-4">NISN</th>
-                <th className="py-3 px-4">Rara Kuning (2 Bahan)</th>
-                <th className="py-3 px-4">Rara Runting (2 Bahan)</th>
-                <th className="py-3 px-4 text-center">Status</th>
+                {(activeTab === "semua" || activeTab === "perawatan") && (
+                  <th className="py-3 px-4">Perawatan Herbal</th>
+                )}
+                {(activeTab === "semua" || activeTab === "nulis") && (
+                  <th className="py-3 px-4">Tugas Nulis (Lv 2 - Nanjak)</th>
+                )}
+                <th className="py-3 px-4 text-center">Status Akhir</th>
                 <th className="py-3 px-4 text-right">Aksi</th>
               </tr>
             </thead>
@@ -165,10 +219,12 @@ export default function RekapLevel2Page() {
                 </tr>
               ) : (
                 filteredStudents.map((stu, idx) => {
-                  const res = resultsMap[stu.id];
-                  const rkItems = res?.rara_kuning_treatments || [];
-                  const rrItems = res?.rara_runting_treatments || [];
-                  const isDone = res?.is_completed;
+                  const oRes = orientasiMap[stu.id];
+                  const nAns = nanjakMap[stu.id];
+                  const rkItems = oRes?.rara_kuning_treatments || [];
+                  const rrItems = oRes?.rara_runting_treatments || [];
+                  const isOrientasiDone = oRes?.is_completed;
+                  const hasNanjakAnswer = Boolean(nAns?.answer?.trim());
 
                   return (
                     <tr key={stu.id} className="hover:bg-stone-800/40 transition">
@@ -179,46 +235,51 @@ export default function RekapLevel2Page() {
                       <td className="py-3 px-4 text-stone-400 font-mono text-xs">
                         {stu.nomor_induk || "-"}
                       </td>
-                      <td className="py-3 px-4">
-                        {rkItems.length === 0 ? (
-                          <span className="text-stone-500 text-xs italic">Belum ada</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {rkItems.map((id) => (
-                              <span
-                                key={id}
-                                className="px-2 py-0.5 rounded-full bg-amber-950/80 border border-yellow-500/60 text-yellow-300 text-[11px] font-medium"
-                              >
-                                ✓ {getItemLabel(id)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
-                      <td className="py-3 px-4">
-                        {rrItems.length === 0 ? (
-                          <span className="text-stone-500 text-xs italic">Belum ada</span>
-                        ) : (
-                          <div className="flex flex-wrap gap-1">
-                            {rrItems.map((id) => (
-                              <span
-                                key={id}
-                                className="px-2 py-0.5 rounded-full bg-emerald-950/80 border border-emerald-500/60 text-emerald-300 text-[11px] font-medium"
-                              >
-                                ✓ {getItemLabel(id)}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </td>
+
+                      {/* Perawatan Column */}
+                      {(activeTab === "semua" || activeTab === "perawatan") && (
+                        <td className="py-3 px-4">
+                          {isOrientasiDone ? (
+                            <div className="space-y-0.5 text-xs">
+                              <p className="text-yellow-300">
+                                <strong>Rara Kuning:</strong> {rkItems.map(getItemLabel).join(", ")}
+                              </p>
+                              <p className="text-emerald-300">
+                                <strong>Rara Runting:</strong> {rrItems.map(getItemLabel).join(", ")}
+                              </p>
+                            </div>
+                          ) : oRes ? (
+                            <span className="text-amber-400 text-xs">
+                              ⏳ Sedang proses ({rkItems.length + rrItems.length}/4)
+                            </span>
+                          ) : (
+                            <span className="text-stone-500 text-xs italic">Belum mengerjakan</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Tugas Nulis Column */}
+                      {(activeTab === "semua" || activeTab === "nulis") && (
+                        <td className="py-3 px-4 max-w-xs">
+                          {hasNanjakAnswer ? (
+                            <p className="text-xs text-stone-200 line-clamp-2 italic font-serif bg-stone-950/60 p-2 rounded border border-stone-800">
+                              &ldquo;{nAns.answer}&rdquo;
+                            </p>
+                          ) : (
+                            <span className="text-stone-500 text-xs italic">Belum mengisi tulisan</span>
+                          )}
+                        </td>
+                      )}
+
+                      {/* Status Column */}
                       <td className="py-3 px-4 text-center">
-                        {isDone ? (
+                        {isOrientasiDone && hasNanjakAnswer ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-emerald-950 border border-emerald-500 text-emerald-300 text-xs font-bold">
-                            ✓ Rampung
+                            ✓ Lengkap
                           </span>
-                        ) : res ? (
+                        ) : isOrientasiDone || hasNanjakAnswer ? (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-amber-950 border border-amber-500 text-amber-300 text-xs font-bold">
-                            ⏳ {rkItems.length + rrItems.length}/4
+                            ⏳ Sebagian
                           </span>
                         ) : (
                           <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-stone-800 border border-stone-700 text-stone-400 text-xs">
@@ -226,10 +287,18 @@ export default function RekapLevel2Page() {
                           </span>
                         )}
                       </td>
+
+                      {/* Action Column */}
                       <td className="py-3 px-4 text-right">
                         <button
                           type="button"
-                          onClick={() => setSelectedStudent({ student: stu, result: res })}
+                          onClick={() =>
+                            setSelectedStudent({
+                              student: stu,
+                              orientasi: oRes,
+                              nanjak: nAns,
+                            })
+                          }
                           className="px-3 py-1 bg-yellow-500/20 hover:bg-yellow-500/30 border border-yellow-500/50 text-yellow-300 text-xs rounded transition"
                         >
                           Detail
@@ -247,7 +316,7 @@ export default function RekapLevel2Page() {
       {/* Detail Modal */}
       {selectedStudent && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-stone-900 border border-stone-700 rounded-2xl p-6 shadow-2xl space-y-4">
+          <div className="w-full max-w-xl bg-stone-900 border border-stone-700 rounded-2xl p-6 shadow-2xl space-y-4">
             <div className="flex items-center justify-between border-b border-stone-800 pb-3">
               <div>
                 <h3 className="font-serif font-bold text-yellow-400 text-lg">
@@ -266,59 +335,63 @@ export default function RekapLevel2Page() {
               </button>
             </div>
 
-            {selectedStudent.result ? (
-              <div className="space-y-4 text-sm">
-                <div className="p-3 rounded-xl bg-amber-950/30 border border-yellow-500/40">
-                  <h4 className="font-bold text-yellow-400 text-xs uppercase mb-2">
-                    Putri Rara Kuning (Gondhok & Kulit Sisik):
-                  </h4>
-                  <ul className="space-y-1 text-xs">
-                    {(selectedStudent.result.rara_kuning_treatments || []).map((id) => (
-                      <li key={id} className="text-yellow-200 flex items-center gap-2">
-                        <span>✓</span> {getItemLabel(id)}
-                      </li>
-                    ))}
-                    {(selectedStudent.result.rara_kuning_treatments || []).length === 0 && (
-                      <li className="text-stone-500 italic">Belum ada bahan yang dipasangkan.</li>
-                    )}
-                  </ul>
-                </div>
+            <div className="space-y-4 text-sm max-h-[70vh] overflow-y-auto pr-1">
+              {/* Bagian 1: Perawatan Herbal */}
+              <div className="p-4 rounded-xl bg-stone-950/80 border border-yellow-500/30 space-y-3">
+                <h4 className="font-bold text-yellow-400 text-xs uppercase flex items-center gap-1.5">
+                  <span>🌿</span> Bagian 1: Hasil Orientasi Perawatan Herbal
+                </h4>
 
-                <div className="p-3 rounded-xl bg-emerald-950/30 border border-emerald-500/40">
-                  <h4 className="font-bold text-emerald-400 text-xs uppercase mb-2">
-                    Rara Runting / Dewi Kilisuci (Lara Kuning):
-                  </h4>
-                  <ul className="space-y-1 text-xs">
-                    {(selectedStudent.result.rara_runting_treatments || []).map((id) => (
-                      <li key={id} className="text-emerald-200 flex items-center gap-2">
-                        <span>✓</span> {getItemLabel(id)}
-                      </li>
-                    ))}
-                    {(selectedStudent.result.rara_runting_treatments || []).length === 0 && (
-                      <li className="text-stone-500 italic">Belum ada bahan yang dipasangkan.</li>
-                    )}
-                  </ul>
-                </div>
+                {selectedStudent.orientasi ? (
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-lg bg-amber-950/40 border border-yellow-500/40">
+                      <p className="font-bold text-yellow-300">Rara Kuning (Gondhok & Kulit Sisik):</p>
+                      <p className="text-stone-300 mt-1">
+                        {(selectedStudent.orientasi.rara_kuning_treatments || [])
+                          .map((id) => `✓ ${getItemLabel(id)}`)
+                          .join(", ") || "Belum ada bahan"}
+                      </p>
+                    </div>
 
-                <div className="text-xs text-stone-400 pt-2 border-t border-stone-800 flex justify-between">
-                  <span>
-                    Status:{" "}
-                    <strong className={selectedStudent.result.is_completed ? "text-emerald-400" : "text-amber-400"}>
-                      {selectedStudent.result.is_completed ? "Selesai (4/4)" : "Belum Selesai"}
-                    </strong>
-                  </span>
-                  <span>
-                    Update: {new Date(selectedStudent.result.updated_at).toLocaleString("id-ID")}
-                  </span>
-                </div>
+                    <div className="p-2.5 rounded-lg bg-emerald-950/40 border border-emerald-500/40">
+                      <p className="font-bold text-emerald-300">Rara Runting (Lara Kuning):</p>
+                      <p className="text-stone-300 mt-1">
+                        {(selectedStudent.orientasi.rara_runting_treatments || [])
+                          .map((id) => `✓ ${getItemLabel(id)}`)
+                          .join(", ") || "Belum ada bahan"}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-stone-500 text-xs italic">Belum mengerjakan perawatan herbal.</p>
+                )}
               </div>
-            ) : (
-              <p className="text-stone-400 text-sm py-4 text-center">
-                Murid ini belum memulai pengerjaan Level 2: Orientasi Perawatan.
-              </p>
-            )}
 
-            <div className="flex justify-end pt-2">
+              {/* Bagian 2: Tugas Nulis (Nanjak) */}
+              <div className="p-4 rounded-xl bg-stone-950/80 border border-yellow-500/30 space-y-2">
+                <h4 className="font-bold text-yellow-400 text-xs uppercase flex items-center gap-1.5">
+                  <span>🪶</span> Bagian 2: Wangsulan Tugas Nulis (Lv 2 - Nanjak)
+                </h4>
+                <p className="text-[11px] text-stone-400 italic">
+                  &ldquo;Saka crita sing kokwaca lan kokdeleng , tulisen nganggo 2-3 ukara bab apa sing dialami déning Rara Kuning lan Rara Runting!&rdquo;
+                </p>
+
+                {selectedStudent.nanjak?.answer ? (
+                  <div className="p-3.5 rounded-xl bg-amber-950/20 border border-yellow-500/50 text-stone-100 text-xs sm:text-sm font-serif leading-relaxed">
+                    &ldquo;{selectedStudent.nanjak.answer}&rdquo;
+                  </div>
+                ) : (
+                  <p className="text-stone-500 text-xs italic">Murid belum menulis wangsulan.</p>
+                )}
+                {selectedStudent.nanjak?.updated_at && (
+                  <p className="text-[10px] text-stone-500 text-right">
+                    Disimpen: {new Date(selectedStudent.nanjak.updated_at).toLocaleString("id-ID")}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex justify-end pt-2 border-t border-stone-800">
               <button
                 type="button"
                 onClick={() => setSelectedStudent(null)}

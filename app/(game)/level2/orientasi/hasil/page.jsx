@@ -137,8 +137,8 @@ export default function Level2OrientasiHasilPage() {
            ======================================================== */}
         <button
           type="button"
-          onClick={() => router.push('/peta')}
-          title="Banjur menyang Peta Petualangan / Tahap Sabanjure"
+          onClick={() => router.push('/level2/nanjak')}
+          title="Banjur menyang Tugas Nulis (Lv 2 - Nanjak)"
           className="absolute left-[84.5%] top-[88.0%] w-[14.0%] h-[8.8%] rounded-full bg-transparent hover:bg-yellow-400/25 hover:ring-2 hover:ring-yellow-300 hover:shadow-[0_0_25px_rgba(250,204,21,0.6)] active:scale-[0.97] transition-all duration-200 cursor-pointer z-30 flex items-center justify-center"
         >
           <span className="sr-only">Banjur</span>
@@ -182,10 +182,10 @@ export default function Level2OrientasiHasilPage() {
               </button>
               <button
                 type="button"
-                onClick={() => router.push('/peta')}
+                onClick={() => router.push('/level2/nanjak')}
                 className="px-5 py-2 rounded-xl bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs shadow-md active:scale-95 transition"
               >
-                Banjur (Nglajengake) →
+                Banjur menyang Tugas Nulis →
               </button>
             </div>
           </div>
