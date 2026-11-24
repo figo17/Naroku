@@ -23,9 +23,9 @@ export default function Level2KaliJembatanPage() {
 
   // Bridge & Crossing States
   const [bridgeBuilt, setBridgeBuilt] = useState(false);
+  const [crossStep, setCrossStep] = useState(0); // 0: bank kiri (17%), 1: tengah jembatan (48%), 2: seberang (70%)
   const [isCrossing, setIsCrossing] = useState(false);
   const [hasCrossed, setHasCrossed] = useState(false);
-  const [showStoryModal, setShowStoryModal] = useState(false);
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
@@ -104,10 +104,8 @@ export default function Level2KaliJembatanPage() {
     if (!isHoldingLog) return;
 
     if (isHoveringRiver) {
-      // SUCCESS: Build the bridge!
       completeBridge();
     } else {
-      // Cancel drag
       setIsHoldingLog(false);
       setIsHoveringRiver(false);
       setSelectedLogId(null);
@@ -122,28 +120,31 @@ export default function Level2KaliJembatanPage() {
     setIsHoldingLog(false);
     setIsHoveringRiver(false);
     setBridgeBuilt(true);
+    setCrossStep(0); // Karakter transparan muncul di posisi awal tepi kiri (menggantikan latar awal tanpa double)
     setToast({
       type: 'success',
       text: '🪵 Krassshh! Kayu kasil dipasang dadi jembatan sing kuwat!',
     });
 
-    // Auto-trigger crossing sequence after short delay
+    // Mulai animasi berjalan menyeberang
     setTimeout(() => {
-      startCrossing();
-    }, 900);
-  };
+      setIsCrossing(true);
+      setCrossStep(1); // Melangkah ke tengah jembatan (2.5 detik)
 
-  const startCrossing = () => {
-    setIsCrossing(true);
-    // Crossing animation duration: 3.5s
-    setTimeout(() => {
-      setIsCrossing(false);
-      setHasCrossed(true);
-    }, 3500);
+      setTimeout(() => {
+        setCrossStep(2); // Melangkah ke tepi kanan sungai (2.0 detik)
+
+        setTimeout(() => {
+          setIsCrossing(false);
+          setHasCrossed(true);
+        }, 2200);
+      }, 2600);
+    }, 700);
   };
 
   const handleReset = () => {
     setBridgeBuilt(false);
+    setCrossStep(0);
     setIsCrossing(false);
     setHasCrossed(false);
     setSelectedLogId(null);
@@ -163,6 +164,19 @@ export default function Level2KaliJembatanPage() {
     );
   }
 
+  // Menentukan posisi koordinat karakter
+  const getCharacterCoords = () => {
+    if (crossStep === 2) {
+      return { left: '70%', top: '42%' }; // Seberang kanan
+    }
+    if (crossStep === 1) {
+      return { left: '48%', top: '37%' }; // Tengah jembatan
+    }
+    return { left: '17%', top: '43%' }; // Tepi kiri awal (presisi sesuai latar awal)
+  };
+
+  const charCoords = getCharacterCoords();
+
   return (
     <div
       className="relative w-screen h-screen bg-[#020705] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans"
@@ -179,14 +193,32 @@ export default function Level2KaliJembatanPage() {
         ref={containerRef}
         className="relative w-full h-full max-w-[calc(100vh*1024/512)] max-h-[calc(100vw*512/1024)] aspect-[1024/512] overflow-hidden shadow-2xl select-none"
       >
-        {/* Background Artwork Kali & Lonjoran Wit */}
+        {/* ========================================================
+            DUAL BACKGROUND SWITCHER (AGAR TIDAK DOUBLE KARAKTER)
+           ======================================================== */}
+        
+        {/* Latar Belakang 1: Awal dengan dialog & karakter di tepi kiri */}
         <Image
           src="/assets/level2/screen_kali_jembatan.jpg"
-          alt="Alas Gunung Wilis - Kali Banter & Lonjoran Wit"
+          alt="Alas Gunung Wilis - Kali Banter & Dialog"
           fill
           priority
           sizes="100vw"
-          className="object-contain object-center"
+          className={`object-contain object-center transition-opacity duration-500 ${
+            bridgeBuilt ? 'opacity-0 pointer-events-none' : 'opacity-100'
+          }`}
+        />
+
+        {/* Latar Belakang 2: Bersih (tanpa karakter cewek di kiri), dipakai pas cewek maju ke sungai */}
+        <Image
+          src="/assets/level2/screen_kali_jembatan_clean.jpg"
+          alt="Alas Gunung Wilis - Kali Banter (Clean Tanpa Double)"
+          fill
+          priority
+          sizes="100vw"
+          className={`object-contain object-center transition-opacity duration-500 ${
+            bridgeBuilt ? 'opacity-100' : 'opacity-0 pointer-events-none'
+          }`}
         />
 
         {/* ========================================================
@@ -239,25 +271,24 @@ export default function Level2KaliJembatanPage() {
         )}
 
         {/* ========================================================
-            ANIMASI KARAKTER MENYEBERANG JEMBATAN
+            ANIMASI KARAKTER MENYEBERANG JEMBATAN (TIDAK DOUBLE)
            ======================================================== */}
-        {(isCrossing || hasCrossed) && (
+        {bridgeBuilt && (
           <div
             className="absolute z-30 pointer-events-none transition-all ease-in-out"
             style={{
-              // Start: Left Bank (22%), End: Right Bank (68%)
-              left: isCrossing ? '52%' : hasCrossed ? '70%' : '22%',
-              top: isCrossing ? '40%' : hasCrossed ? '42%' : '48%',
-              transitionDuration: isCrossing ? '3.5s' : '0.5s',
+              left: charCoords.left,
+              top: charCoords.top,
+              transitionDuration: crossStep === 1 ? '2.5s' : crossStep === 2 ? '2.0s' : '0.4s',
               filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.8))',
             }}
           >
             <div className="flex items-end gap-1">
               {/* Rara Runting (Hijau) */}
-              <div className="relative w-12 h-28 sm:w-16 sm:h-36">
+              <div className="relative w-12 h-28 sm:w-16 sm:h-36 animate-sway">
                 <Image
                   src="/assets/level2/karakter-rara-runting-tengok.png"
-                  alt="Putri Rara Runting Nyebrang"
+                  alt="Putri Rara Runting"
                   fill
                   priority
                   sizes="80px"
@@ -266,10 +297,10 @@ export default function Level2KaliJembatanPage() {
               </div>
 
               {/* Rara Kuning (Kuning) */}
-              <div className="relative w-16 h-30 sm:w-20 sm:h-40 -ml-3">
+              <div className="relative w-16 h-30 sm:w-20 sm:h-40 -ml-3 animate-sway">
                 <Image
                   src="/assets/level2/karakter-rara-kuning-tunjuk.png"
-                  alt="Putri Rara Kuning Nyebrang"
+                  alt="Putri Rara Kuning"
                   fill
                   priority
                   sizes="100px"
@@ -280,8 +311,8 @@ export default function Level2KaliJembatanPage() {
 
             {/* Status Berjalan */}
             {isCrossing && (
-              <div className="px-2 py-0.5 rounded-full bg-stone-950/90 border border-yellow-400 text-yellow-300 text-[9px] font-bold shadow-lg animate-pulse whitespace-nowrap mt-1">
-                🚶‍♀️🚶‍♀️ Mlaku nyebrang...
+              <div className="px-2.5 py-0.5 rounded-full bg-stone-950/90 border border-yellow-400 text-yellow-300 text-[10px] font-bold shadow-lg animate-pulse whitespace-nowrap mt-1 text-center">
+                🚶‍♀️🚶‍♀️ Mlaku nyebrang jembatan...
               </div>
             )}
           </div>
@@ -293,7 +324,6 @@ export default function Level2KaliJembatanPage() {
         {!bridgeBuilt && (
           <>
             {/* ---------------- LOG 1 (ATAS) ---------------- */}
-            {/* Hitbox Gambar Kayu 1 */}
             <div
               onPointerDown={(e) => {
                 e.preventDefault();
@@ -307,7 +337,6 @@ export default function Level2KaliJembatanPage() {
               className="absolute left-[33.5%] top-[13.0%] w-[13.0%] h-[9.0%] rounded-xl z-20 cursor-grab hover:ring-2 hover:ring-yellow-400/80 hover:bg-yellow-400/15 transition-all"
               title="Kayu 1 (Pencet utawa seret)"
             />
-            {/* Tombol Grafis "Gunakake wit" 1 */}
             <button
               type="button"
               onPointerDown={(e) => {
@@ -326,7 +355,6 @@ export default function Level2KaliJembatanPage() {
             </button>
 
             {/* ---------------- LOG 2 (KANAN SEBERANG) ---------------- */}
-            {/* Hitbox Gambar Kayu 2 */}
             <div
               onPointerDown={(e) => {
                 e.preventDefault();
@@ -340,7 +368,6 @@ export default function Level2KaliJembatanPage() {
               className="absolute left-[66.0%] top-[29.5%] w-[17.5%] h-[12.0%] rounded-xl z-20 cursor-grab hover:ring-2 hover:ring-yellow-400/80 hover:bg-yellow-400/15 transition-all"
               title="Kayu 2 (Pencet utawa seret)"
             />
-            {/* Tombol Grafis "Gunakake wit" 2 */}
             <button
               type="button"
               onPointerDown={(e) => {
@@ -359,7 +386,6 @@ export default function Level2KaliJembatanPage() {
             </button>
 
             {/* ---------------- LOG 3 (BAWAH - PALING KUWAT & DEKAT) ---------------- */}
-            {/* Hitbox Gambar Kayu 3 */}
             <div
               onPointerDown={(e) => {
                 e.preventDefault();
@@ -373,7 +399,6 @@ export default function Level2KaliJembatanPage() {
               className="absolute left-[38.5%] top-[75.0%] w-[14.5%] h-[14.0%] rounded-xl z-20 cursor-grab hover:ring-2 hover:ring-yellow-400/80 hover:bg-yellow-400/15 transition-all animate-pulse"
               title="Kayu Kuwat 3 (Pencet utawa seret)"
             />
-            {/* Tombol Grafis "Gunakake wit" 3 */}
             <button
               type="button"
               onPointerDown={(e) => {
@@ -408,7 +433,6 @@ export default function Level2KaliJembatanPage() {
             }}
             className="flex flex-col items-center select-none"
           >
-            {/* Batang Kayu Melayang */}
             <div className="relative w-36 h-20 sm:w-48 sm:h-28 drop-shadow-[0_20px_30px_rgba(0,0,0,0.95)] filter brightness-110">
               <Image
                 src="/assets/level2/item-kayu-jembatan.png"
@@ -419,8 +443,6 @@ export default function Level2KaliJembatanPage() {
                 className="object-contain"
               />
             </div>
-
-            {/* Label Melayang */}
             <div className="px-3 py-0.5 rounded-full bg-stone-950/95 border border-yellow-400 text-yellow-300 text-[10px] font-bold shadow-2xl tracking-wide whitespace-nowrap mt-0.5">
               ✨ Selehake ing Kali
             </div>
@@ -430,7 +452,6 @@ export default function Level2KaliJembatanPage() {
         {/* ========================================================
             D-PAD DI KIRI BAWAH
            ======================================================== */}
-        {/* Tombol Kiri (⬅) -> Kembali ke Lv 2 Alas */}
         <button
           type="button"
           onClick={() => router.push('/level2/alas')}
