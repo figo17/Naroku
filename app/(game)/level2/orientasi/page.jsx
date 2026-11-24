@@ -535,7 +535,7 @@ export default function Level2OrientasiPerawatanPage() {
           type="button"
           onClick={() => {
             if (isAllReady) {
-              router.push('/peta');
+              router.push('/level2/orientasi/hasil');
             } else {
               setFeedback({
                 type: 'info',
@@ -543,7 +543,7 @@ export default function Level2OrientasiPerawatanPage() {
               });
             }
           }}
-          title={isAllReady ? 'Nglajengake menyang Peta / Tahap Sabanjure' : 'Rampungake perawatan dhisik'}
+          title={isAllReady ? 'Nglajengake menyang Asil Perawatan' : 'Rampungake perawatan dhisik'}
           className={`absolute left-[84.5%] top-[89.4%] w-[11.7%] h-[7.8%] rounded-full bg-transparent transition-all cursor-pointer z-30 flex items-center justify-center ${
             isAllReady
               ? 'hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300 hover:shadow-[0_0_20px_rgba(250,204,21,0.6)] animate-pulse'
@@ -623,10 +623,10 @@ export default function Level2OrientasiPerawatanPage() {
 
             <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
               <Link
-                href="/peta"
+                href="/level2/orientasi/hasil"
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>🗺️</span> Lanjut menyang Peta Petualangan
+                <span>📜</span> Deleng Asil Perawatan (Banjur →)
               </Link>
               <button
                 type="button"
