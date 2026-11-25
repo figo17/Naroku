@@ -3,6 +3,7 @@
 import React, { useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { checkCollision } from '@/lib/utils';
+import PixelRoroPair from '@/components/game/PixelRoroPair';
 
 /**
  * Player Component
@@ -92,32 +93,16 @@ export default function Player({ collisionMatrix, onStep, disabled = false }) {
       }}
     >
       {/* Sprite Container */}
-      <div className="relative w-full h-full flex flex-col items-center justify-center">
-        {/* Shadow */}
-        <div className="absolute bottom-1 w-7 h-2 bg-black/40 rounded-full blur-[1px]" />
-
-        {/* Dewi Kilisuci Character Placeholder */}
-        <div
-          className={`w-9 h-10 rounded-t-lg bg-gradient-to-b from-amber-300 via-yellow-400 to-amber-600 border-2 border-amber-900 shadow-md flex flex-col items-center justify-between p-0.5 transform ${
-            isMoving ? 'scale-105 -translate-y-0.5' : ''
-          } transition-transform`}
-        >
-          {/* Head & Hair with Sanggul */}
-          <div className="w-5 h-4 bg-amber-100 rounded-full border border-amber-900 flex items-center justify-center relative">
-            {/* Sanggul or crown */}
-            <div className="absolute -top-1 w-3 h-2 bg-yellow-500 rounded-t-full border border-amber-800" />
-            <span className="text-[7px] text-amber-950 font-bold">{directionIndicator}</span>
-          </div>
-
-          {/* Kebaya / Jarik Traditional Body */}
-          <div className="w-6 h-5 bg-gradient-to-b from-emerald-700 to-amber-900 rounded-b-md flex items-center justify-center text-[7px] font-bold text-amber-200">
-            DK
-          </div>
-        </div>
+      <div className="relative w-full h-full flex flex-col items-center justify-end">
+        <PixelRoroPair
+          isWalking={isMoving}
+          facingLeft={direction === 'left'}
+          heightCss="54px"
+        />
 
         {/* Name tag */}
-        <div className="absolute -top-4 bg-black/70 text-yellow-300 text-[9px] font-semibold px-1.5 py-0.2 rounded-full whitespace-nowrap border border-yellow-500/40 shadow">
-          Dewi Kilisuci
+        <div className="absolute -top-5 bg-black/75 text-yellow-300 text-[9px] font-semibold px-1.5 py-0.2 rounded-full whitespace-nowrap border border-yellow-500/40 shadow">
+          Rara Kuning &amp; Runting
         </div>
       </div>
     </div>

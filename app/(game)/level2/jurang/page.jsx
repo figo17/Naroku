@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
+import PixelRoroPair from '@/components/game/PixelRoroPair';
 
 export default function Level2JurangTaliPage() {
   const router = useRouter();
@@ -604,43 +605,12 @@ export default function Level2JurangTaliPage() {
               filter: 'drop-shadow(0 12px 20px rgba(0,0,0,0.85))',
             }}
           >
-            {/* Bayangan Dinamis di Bawah Kaki */}
-            <div
-              className={`absolute -bottom-2 left-1/2 -translate-x-1/2 w-28 h-5 rounded-[100%] bg-black/60 blur-[2px] ${
-                animationMode === 'walk' ? 'animate-shadow-walk' : ''
-              }`}
+            {/* Karakter Putri Pixel Art Berdampingan */}
+            <PixelRoroPair
+              isWalking={animationMode === 'walk'}
+              order="kuning-first"
+              heightCss="clamp(74px, 21vh, 148px)"
             />
-
-            {/* Karakter Putri Berdampingan */}
-            <div
-              className={`flex items-end gap-1.5 ${
-                animationMode === 'walk' ? 'animate-walk-roro' : 'animate-idle-roro'
-              }`}
-            >
-              {/* Putri Rara Runting (Kebaya Hijau) */}
-              <div className="relative w-14 h-32 sm:w-18 sm:h-40 transform transition-transform">
-                <Image
-                  src="/assets/level2/karakter-rara-runting-tali.png"
-                  alt="Putri Rara Runting"
-                  fill
-                  priority
-                  sizes="100px"
-                  className="object-contain"
-                />
-              </div>
-
-              {/* Putri Rara Kuning (Kebaya Kuning) */}
-              <div className="relative w-18 h-34 sm:w-22 sm:h-44 -ml-4 transform transition-transform">
-                <Image
-                  src="/assets/level2/karakter-rara-kuning-tali.png"
-                  alt="Putri Rara Kuning"
-                  fill
-                  priority
-                  sizes="120px"
-                  className="object-contain"
-                />
-              </div>
-            </div>
 
             {/* Status Indikator di Bawah Karakter */}
             <div className="flex flex-col items-center mt-1">

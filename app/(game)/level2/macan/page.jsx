@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
+import PixelRoroPair from '@/components/game/PixelRoroPair';
 
 /*
   STAGE FLOW (/level2/macan - sebelum /level2/pring):
@@ -406,30 +407,7 @@ export default function Level2MacanPage() {
                 transformOrigin: 'bottom center',
               }}
             >
-              <div className="flex items-end" style={{ transform: facingLeft ? 'scaleX(-1)' : 'none' }}>
-                <div className={isWalking ? 'anim-walk' : 'anim-idle'}>
-                  <div className="relative" style={{ width: '6.2vw', maxWidth: 74, minWidth: 40, aspectRatio: '130/315' }}>
-                    <Image
-                      src="/assets/level2/karakter-rara-runting-tali.png"
-                      alt="Putri Rara Runting"
-                      fill
-                      sizes="74px"
-                      className="object-contain pixel-sprite drop-shadow-[0_8px_14px_rgba(0,0,0,0.85)]"
-                    />
-                  </div>
-                </div>
-                <div className={`-ml-2.5 ${isWalking ? 'anim-walk' : 'anim-idle'}`} style={{ animationDelay: '0.14s' }}>
-                  <div className="relative" style={{ width: '7.4vw', maxWidth: 86, minWidth: 46, aspectRatio: '241/331' }}>
-                    <Image
-                      src="/assets/level2/karakter-rara-kuning-tali.png"
-                      alt="Putri Rara Kuning"
-                      fill
-                      sizes="86px"
-                      className="object-contain pixel-sprite drop-shadow-[0_8px_14px_rgba(0,0,0,0.85)]"
-                    />
-                  </div>
-                </div>
-              </div>
+              <PixelRoroPair isWalking={isWalking} facingLeft={facingLeft} />
             </div>
           </>
         )}

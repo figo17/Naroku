@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
+import PixelRoroPair from '@/components/game/PixelRoroPair';
 
 export default function Level2KaliJembatanPage() {
   const router = useRouter();
@@ -377,31 +378,7 @@ export default function Level2KaliJembatanPage() {
               filter: 'drop-shadow(0 10px 15px rgba(0,0,0,0.8))',
             }}
           >
-            <div className="flex items-end gap-1">
-              {/* Rara Runting (Hijau) */}
-              <div className="relative w-12 h-28 sm:w-16 sm:h-36 animate-sway">
-                <Image
-                  src="/assets/level2/karakter-rara-runting-tengok.png"
-                  alt="Putri Rara Runting"
-                  fill
-                  priority
-                  sizes="80px"
-                  className="object-contain"
-                />
-              </div>
-
-              {/* Rara Kuning (Kuning) */}
-              <div className="relative w-16 h-30 sm:w-20 sm:h-40 -ml-3 animate-sway">
-                <Image
-                  src="/assets/level2/karakter-rara-kuning-tunjuk.png"
-                  alt="Putri Rara Kuning"
-                  fill
-                  priority
-                  sizes="100px"
-                  className="object-contain"
-                />
-              </div>
-            </div>
+            <PixelRoroPair isWalking={isCrossing} heightCss="clamp(68px, 19vh, 134px)" />
 
             {/* Status Berjalan */}
             {isCrossing && (

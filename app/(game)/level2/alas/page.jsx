@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
+import PixelRoroPair from '@/components/game/PixelRoroPair';
 
 /*
   SCENE FLOW:
@@ -457,7 +458,7 @@ export default function Level2AlasKapakPage() {
               />
             ))}
 
-            {/* KARAKTER DINAMIS (RARA KUNING & RARA RUNTING) */}
+            {/* KARAKTER DINAMIS PIXEL ART (RARA KUNING & RARA RUNTING) */}
             <div
               className="absolute z-20 pointer-events-none"
               style={{
@@ -466,48 +467,7 @@ export default function Level2AlasKapakPage() {
                 transform: 'translate(-50%, -100%)',
               }}
             >
-              <div
-                className="relative flex items-end"
-                style={{
-                  transform: facingLeft ? 'scaleX(-1)' : 'scaleX(1)',
-                  transition: 'transform 0.15s ease',
-                }}
-              >
-                {/* Rara Kuning */}
-                <div className={isWalking ? 'anim-walk' : 'anim-idle'}>
-                  <div
-                    className="relative"
-                    style={{ width: '7.5vw', maxWidth: 88, minWidth: 46, aspectRatio: '241/331' }}
-                  >
-                    <Image
-                      src="/assets/level2/karakter-rara-kuning-tali.png"
-                      alt="Putri Rara Kuning"
-                      fill
-                      sizes="88px"
-                      className="object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.8)]"
-                    />
-                  </div>
-                </div>
-
-                {/* Rara Runting */}
-                <div
-                  className={`-ml-3 ${isWalking ? 'anim-walk' : 'anim-idle'}`}
-                  style={{ animationDelay: '0.15s' }}
-                >
-                  <div
-                    className="relative"
-                    style={{ width: '6.2vw', maxWidth: 74, minWidth: 40, aspectRatio: '130/315' }}
-                  >
-                    <Image
-                      src="/assets/level2/karakter-rara-runting-tali.png"
-                      alt="Putri Rara Runting"
-                      fill
-                      sizes="74px"
-                      className="object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.8)]"
-                    />
-                  </div>
-                </div>
-
+              <PixelRoroPair isWalking={isWalking} facingLeft={facingLeft} order="kuning-first">
                 {/* Kapak di tangan karakter saat sudah diambil */}
                 {hasAxe && (
                   <div
@@ -528,7 +488,7 @@ export default function Level2AlasKapakPage() {
                     </div>
                   </div>
                 )}
-              </div>
+              </PixelRoroPair>
             </div>
 
             {/* Tombol Ayunkan Kapak (muncul ketika pegang kapak) */}
