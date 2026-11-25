@@ -410,10 +410,10 @@ export default function Level2KembangPage() {
               🔄 Baleni
             </button>
             <Link
-              href="/peta"
+              href="/level2/labirin"
               className="px-4 py-2 rounded-full bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs shadow-lg"
             >
-              🗺️ Lanjut menyang Peta →
+              🌿 Lanjut menyang Labirin →
             </Link>
           </div>
         )}
@@ -443,10 +443,10 @@ export default function Level2KembangPage() {
                   Baleni 🔄
                 </button>
                 <Link
-                  href="/peta"
+                  href="/level2/labirin"
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
                 >
-                  🗺️ Lanjut menyang Peta →
+                  🌿 Lanjut menyang Labirin →
                 </Link>
               </div>
             </div>
