@@ -332,8 +332,8 @@ export default function Level2PringPage() {
                 <button type="button" onClick={reset} className="px-4 py-2.5 rounded-xl bg-stone-800 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer">
                   Baleni 🔄
                 </button>
-                <Link href="/peta" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs sm:text-sm">
-                  Lanjut →
+                <Link href="/level2/kembang" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs sm:text-sm">
+                  🌸 Lanjut menyang Kembang Pusaka →
                 </Link>
               </div>
             </div>
