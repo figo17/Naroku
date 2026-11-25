@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   STAGE FLOW (/level2/pring):
@@ -38,7 +39,7 @@ const SLOTS = [
 export default function Level2PringPage() {
   const router = useRouter();
   const supabase = createClient();
-  const dpadTimerRef = useRef(null);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
@@ -49,7 +50,6 @@ export default function Level2PringPage() {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
   const [placed, setPlaced] = useState([false, false, false]);
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
   const [toast, setToast] = useState(null);
 
   const goStage = useCallback((s) => {
@@ -72,12 +72,8 @@ export default function Level2PringPage() {
     return () => clearTimeout(t);
   }, [toast]);
 
-  const stopDpadMove = useCallback(() => {
-    setActiveDpadDir(null);
-    if (dpadTimerRef.current) {
-      clearInterval(dpadTimerRef.current);
-      dpadTimerRef.current = null;
-    }
+  const stopAnalog = useCallback(() => {
+    analogRef.current = { x: 0, y: 0, active: false };
   }, []);
 
   const startWalk = useCallback(() => {
@@ -85,7 +81,7 @@ export default function Level2PringPage() {
     charPosRef.current = START_POS;
     setCharPos(START_POS);
     goStage('walk');
-    setToast({ type: 'info', text: '🚶 Mlaku nyedhaki pring nganggo D-Pad utawa tombol Panah!' });
+    setToast({ type: 'info', text: '🚶 Mlaku nyedhaki pring nganggo Analog utawa tombol Panah!' });
   }, [goStage]);
 
   const moveCharacter = useCallback(
@@ -106,16 +102,16 @@ export default function Level2PringPage() {
       setCharPos({ x: nx, y: ny });
 
       if (s === 'walk' && nx >= 36 && ny >= 60 && ny <= 92) {
-        stopDpadMove();
+        stopAnalog();
         goStage('arrange');
         setToast({ type: 'success', text: '🎋 Pencet pring siji-siji kanggo nyusun 3 pring dadi kreteg!' });
       } else if (s === 'bridge' && nx >= 42 && ny <= 62) {
-        stopDpadMove();
+        stopAnalog();
         setIsWalking(false);
         goStage('done');
       }
     },
-    [goStage, stopDpadMove]
+    [goStage, stopAnalog]
   );
 
   const placeBamboo = (i) => {
@@ -130,20 +126,6 @@ export default function Level2PringPage() {
     }
   };
 
-  const startDpadMove = (dir) => {
-    if (stageRef.current === 'intro') {
-      startWalk();
-      return;
-    }
-    stopDpadMove();
-    setActiveDpadDir(dir);
-    const step = 1.5;
-    const dx = dir === 'left' ? -step : dir === 'right' ? step : 0;
-    const dy = dir === 'up' ? -step : dir === 'down' ? step : 0;
-    moveCharacter(dx, dy);
-    dpadTimerRef.current = setInterval(() => moveCharacter(dx * 0.85, dy * 0.85), 45);
-  };
-
   useEffect(() => {
     const keys = new Set();
     const map = {
@@ -154,18 +136,22 @@ export default function Level2PringPage() {
     };
     let raf;
     const loop = () => {
-      let dx = 0;
-      let dy = 0;
+      let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
+      let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
       keys.forEach((k) => {
         dx += map[k][0] * 0.6;
         dy += map[k][1] * 0.6;
       });
-      if (dx || dy) moveCharacter(dx, dy);
+      if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
       raf = requestAnimationFrame(loop);
     };
     const down = (e) => {
       if (map[e.code]) {
         e.preventDefault();
+        if (stageRef.current === 'intro') {
+          startWalk();
+          return;
+        }
         keys.add(e.code);
       } else if ((e.code === 'Space' || e.code === 'Enter') && stageRef.current === 'intro') {
         e.preventDefault();
@@ -180,13 +166,12 @@ export default function Level2PringPage() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       cancelAnimationFrame(raf);
-      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startWalk]);
 
   const reset = () => {
-    stopDpadMove();
+    stopAnalog();
     setPlaced([false, false, false]);
     charPosRef.current = START_POS;
     setCharPos(START_POS);
@@ -205,12 +190,6 @@ export default function Level2PringPage() {
 
   const showSprite = stage === 'walk' || stage === 'arrange' || stage === 'bridge' || stage === 'done';
   const depthScale = Math.max(0.72, Math.min(1.05, 0.72 + ((charPos.y - 44) / 51) * 0.33));
-  const dpadBtns = [
-    { dir: 'up', cls: 'left-[5.1%] top-[81%]' },
-    { dir: 'left', cls: 'left-[0.4%] top-[89%]' },
-    { dir: 'down', cls: 'left-[5.1%] top-[89%]' },
-    { dir: 'right', cls: 'left-[10%] top-[89%]' },
-  ];
 
   return (
     <div className="relative w-screen h-screen bg-[#04120a] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
@@ -306,18 +285,18 @@ export default function Level2PringPage() {
           </div>
         )}
 
-        {/* D-Pad emulator (di atas tombol gambar) */}
-        {stage !== 'done' &&
-          dpadBtns.map(({ dir, cls }) => (
-            <button key={dir} type="button" title={dir}
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove(dir); }}
-              onPointerUp={stopDpadMove} onPointerLeave={stopDpadMove} onPointerCancel={stopDpadMove}
-              className={`absolute ${cls} w-[4.3%] h-[7%] rounded-lg z-40 cursor-pointer touch-none transition-all ${
-                activeDpadDir === dir ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90' : 'hover:bg-yellow-400/20 active:scale-90'
-              }`}>
-              <span className="sr-only">{dir}</span>
-            </button>
-          ))}
+        {/* Analog Kontroler */}
+        {stage !== 'done' && (
+          <AnalogJoystick
+            disabled={stage === 'arrange'}
+            onStart={() => {
+              if (stageRef.current === 'intro') startWalk();
+            }}
+            onChange={(v) => {
+              analogRef.current = v;
+            }}
+          />
+        )}
 
         {/* Modal rampung */}
         {stage === 'done' && (

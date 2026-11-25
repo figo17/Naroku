@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   SCENE FLOW (/level2/gua):
@@ -19,7 +20,7 @@ const START_POS = { x: 26.5, y: 80.0 };
 export default function Level2GuaOborPage() {
   const router = useRouter();
   const supabase = createClient();
-  const dpadTimerRef = useRef(null);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
   const audioCtxRef = useRef(null);
 
@@ -36,7 +37,6 @@ export default function Level2GuaOborPage() {
   const hasTorchRef = useRef(false);
   const [isCompleted, setIsCompleted] = useState(false);
   const isCompletedRef = useRef(false);
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
   const [toast, setToast] = useState(null);
 
   useEffect(() => { sceneRef.current = scene; }, [scene]);
@@ -124,15 +124,11 @@ export default function Level2GuaOborPage() {
     hasTorchRef.current = false;
     setIsCompleted(false);
     isCompletedRef.current = false;
-    showToast('🔥 Mlaku nyedhaki obor nganggo D-Pad utawa tombol Panah kanggo njupuk geni!', 'info');
+    showToast('🔥 Mlaku nyedhaki obor nganggo Analog utawa tombol Panah kanggo njupuk geni!', 'info');
   }, [showToast]);
 
-  const stopDpadMove = useCallback(() => {
-    setActiveDpadDir(null);
-    if (dpadTimerRef.current) {
-      clearInterval(dpadTimerRef.current);
-      dpadTimerRef.current = null;
-    }
+  const stopAnalog = useCallback(() => {
+    analogRef.current = { x: 0, y: 0, active: false };
   }, []);
 
   // Move character and check torch pickup + cave mouth arrival
@@ -166,51 +162,27 @@ export default function Level2GuaOborPage() {
       isCompletedRef.current = true;
       setIsCompleted(true);
       setIsWalking(false);
-      stopDpadMove();
+      stopAnalog();
       playSound('victory');
       showToast('🎉 Kasil tekan bibir guwa kanthi slamet!', 'success');
     }
-  }, [playSound, showToast, stopDpadMove]);
+  }, [playSound, showToast, stopAnalog]);
 
-  const startDpadMove = (dir) => {
-    if (sceneRef.current === 'intro') {
-      startPlayScene();
-      return;
-    }
-    if (sceneRef.current !== 'play' || isCompletedRef.current) return;
-
-    setActiveDpadDir(dir);
-    if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
-
-    const step = 1.5;
-    let dx = 0;
-    let dy = 0;
-    if (dir === 'up') dy = -step;
-    if (dir === 'down') dy = step;
-    if (dir === 'left') dx = -step;
-    if (dir === 'right') dx = step;
-
-    moveCharacter(dx, dy);
-    dpadTimerRef.current = setInterval(() => {
-      moveCharacter(dx * 0.85, dy * 0.85);
-    }, 45);
-  };
-
-  // Keyboard Arrow / WASD controls
+  // Keyboard Arrow / WASD + Analog controls
   useEffect(() => {
     const activeKeys = new Set();
     let animFrameId = null;
 
     const loop = () => {
-      if (activeKeys.size > 0 && sceneRef.current === 'play' && !isCompletedRef.current) {
+      if (sceneRef.current === 'play' && !isCompletedRef.current) {
         const step = 0.6;
-        let dx = 0;
-        let dy = 0;
+        let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
+        let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
         if (activeKeys.has('ArrowUp') || activeKeys.has('KeyW')) dy -= step;
         if (activeKeys.has('ArrowDown') || activeKeys.has('KeyS')) dy += step;
         if (activeKeys.has('ArrowLeft') || activeKeys.has('KeyA')) dx -= step;
         if (activeKeys.has('ArrowRight') || activeKeys.has('KeyD')) dx += step;
-        if (dx !== 0 || dy !== 0) moveCharacter(dx, dy);
+        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
       }
       animFrameId = requestAnimationFrame(loop);
     };
@@ -241,13 +213,12 @@ export default function Level2GuaOborPage() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       if (animFrameId) cancelAnimationFrame(animFrameId);
-      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startPlayScene]);
 
   const resetMission = () => {
-    stopDpadMove();
+    stopAnalog();
     setScene('intro');
     sceneRef.current = 'intro';
     setCharPos(START_POS);
@@ -490,87 +461,16 @@ export default function Level2GuaOborPage() {
           </>
         )}
 
-        {/* ========================================================
-            D-PAD EMULATOR (POJOK KIRI BAWAH — HP & PC)
-           ======================================================== */}
+        {/* KONTROLER ANALOG 360° (HP & PC) */}
         {!isCompleted && (
-          <div className="pointer-events-auto select-none">
-            {/* Atas (▲) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('up'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('up'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Maju / Mendhuwur (▲)"
-              className={`absolute left-[5.4%] top-[77.5%] w-[4.2%] h-[7.6%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'up'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Dhuwur</span>
-            </button>
-
-            {/* Kiwa (◀) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('left'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('left'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Ngiwa (◀)"
-              className={`absolute left-[0.9%] top-[85.6%] w-[4.2%] h-[7.6%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'left'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Kiwa</span>
-            </button>
-
-            {/* Ngisor (▼) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('down'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('down'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Mundur / Mengisor (▼)"
-              className={`absolute left-[5.4%] top-[85.6%] w-[4.2%] h-[7.6%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'down'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Ngisor</span>
-            </button>
-
-            {/* Tengen (▶) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('right'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('right'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Maju Nengen (▶)"
-              className={`absolute left-[10.1%] top-[85.6%] w-[4.2%] h-[7.6%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'right'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Tengen</span>
-            </button>
-          </div>
+          <AnalogJoystick
+            onStart={() => {
+              if (sceneRef.current === 'intro') startPlayScene();
+            }}
+            onChange={(v) => {
+              analogRef.current = v;
+            }}
+          />
         )}
 
         {/* ========================================================

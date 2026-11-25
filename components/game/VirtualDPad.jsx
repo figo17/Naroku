@@ -1,84 +1,63 @@
 'use client';
 
-import React from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useGameStore } from '@/store/useGameStore';
 import { checkCollision } from '@/lib/utils';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /**
- * VirtualDPad Component
- * On-screen touch/click D-Pad controls for mobile and tablet players.
+ * Virtual Analog Controller for Grid/Map PlayPage (/play)
  */
 export default function VirtualDPad({ collisionMatrix, onStep, disabled = false }) {
   const { pos, move, setIsMoving, setDirection } = useGameStore();
+  const posRef = useRef(pos);
+  const vecRef = useRef({ x: 0, y: 0, active: false });
 
-  const handleDirectionPress = (dx, dy, dirName) => {
-    if (disabled) return;
+  useEffect(() => {
+    posRef.current = pos;
+  }, [pos]);
 
-    const targetX = pos.x + dx;
-    const targetY = pos.y + dy;
+  const stepGrid = useCallback(
+    (dx, dy, dirName) => {
+      if (disabled) return;
+      const cur = posRef.current;
+      const targetX = cur.x + dx;
+      const targetY = cur.y + dy;
 
-    if (collisionMatrix && checkCollision(targetX, targetY, collisionMatrix)) {
-      setDirection(dirName);
-      return;
-    }
+      if (collisionMatrix && checkCollision(targetX, targetY, collisionMatrix)) {
+        setDirection(dirName);
+        return;
+      }
 
-    move(dx, dy);
+      move(dx, dy);
+      setTimeout(() => setIsMoving(false), 150);
+      if (onStep) onStep({ x: targetX, y: targetY });
+    },
+    [collisionMatrix, disabled, move, onStep, setDirection, setIsMoving]
+  );
 
-    setTimeout(() => {
-      setIsMoving(false);
-    }, 150);
+  useEffect(() => {
+    const id = setInterval(() => {
+      const { x, y, active } = vecRef.current;
+      if (!active || disabled) return;
+      if (Math.hypot(x, y) < 0.35) return;
 
-    if (onStep) {
-      onStep({ x: targetX, y: targetY });
-    }
-  };
+      if (Math.abs(x) >= Math.abs(y)) {
+        stepGrid(x > 0 ? 1 : -1, 0, x > 0 ? 'right' : 'left');
+      } else {
+        stepGrid(0, y > 0 ? 1 : -1, y > 0 ? 'down' : 'up');
+      }
+    }, 185);
+    return () => clearInterval(id);
+  }, [disabled, stepGrid]);
 
   return (
-    <div className="fixed bottom-6 right-6 z-40 flex flex-col items-center select-none pointer-events-auto opacity-80 hover:opacity-100 transition-opacity">
-      {/* Up Button */}
-      <button
-        type="button"
-        onClick={() => handleDirectionPress(0, -1, 'up')}
-        className="w-14 h-14 bg-stone-900/80 active:bg-amber-600 border-2 border-amber-600/70 text-yellow-300 rounded-t-2xl flex items-center justify-center text-xl shadow-lg active:scale-95 transition-all"
-        aria-label="Move Up"
-      >
-        ▲
-      </button>
-
-      {/* Middle Row: Left, Center circle, Right */}
-      <div className="flex items-center">
-        <button
-          type="button"
-          onClick={() => handleDirectionPress(-1, 0, 'left')}
-          className="w-14 h-14 bg-stone-900/80 active:bg-amber-600 border-2 border-amber-600/70 text-yellow-300 rounded-l-2xl flex items-center justify-center text-xl shadow-lg active:scale-95 transition-all"
-          aria-label="Move Left"
-        >
-          ◄
-        </button>
-
-        <div className="w-14 h-14 bg-stone-950/90 border-2 border-amber-700/40 flex items-center justify-center text-amber-500 text-xs font-mono font-bold">
-          🕹️
-        </div>
-
-        <button
-          type="button"
-          onClick={() => handleDirectionPress(1, 0, 'right')}
-          className="w-14 h-14 bg-stone-900/80 active:bg-amber-600 border-2 border-amber-600/70 text-yellow-300 rounded-r-2xl flex items-center justify-center text-xl shadow-lg active:scale-95 transition-all"
-          aria-label="Move Right"
-        >
-          ►
-        </button>
-      </div>
-
-      {/* Down Button */}
-      <button
-        type="button"
-        onClick={() => handleDirectionPress(0, 1, 'down')}
-        className="w-14 h-14 bg-stone-900/80 active:bg-amber-600 border-2 border-amber-600/70 text-yellow-300 rounded-b-2xl flex items-center justify-center text-xl shadow-lg active:scale-95 transition-all"
-        aria-label="Move Down"
-      >
-        ▼
-      </button>
-    </div>
+    <AnalogJoystick
+      disabled={disabled}
+      onChange={(v) => {
+        vecRef.current = v;
+      }}
+      className="fixed bottom-5 right-5 w-28 h-28 sm:w-32 sm:h-32 z-40"
+    />
   );
 }

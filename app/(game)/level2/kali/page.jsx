@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 export default function Level2KaliJembatanPage() {
   const router = useRouter();
@@ -580,27 +581,22 @@ export default function Level2KaliJembatanPage() {
           </div>
         )}
 
-        {/* ========================================================
-            D-PAD DI KIRI BAWAH
-           ======================================================== */}
-        <button
-          type="button"
-          onClick={() => router.push('/level2/alas')}
-          title="Bali menyang Adegan Tebang Pohon"
-          className="absolute left-[0.9%] top-[84.0%] w-[4.0%] h-[15.0%] rounded-lg bg-transparent hover:bg-yellow-400/20 active:scale-95 transition-all cursor-pointer z-20"
-        >
-          <span className="sr-only">Bali</span>
-        </button>
+        {/* KONTROLER ANALOG DI KIRI BAWAH & NAVIGASI */}
+        <AnalogJoystick
+          onChange={({ x, active }) => {
+            if (!active) return;
+            if (x < -0.8 && !bridgeBuilt && placedLogs.length === 0) {
+              router.push('/level2/alas');
+            }
+          }}
+        />
 
-        {/* ========================================================
-            NAVIGASI POJOK BAWAH
-           ======================================================== */}
-        <div className="absolute bottom-2.5 left-4 z-30">
+        <div className="absolute top-3 left-4 z-35">
           <Link
             href="/level2/alas"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
-            <span>⬅</span> Bali menyang Adegan Tebang Pohon
+            <span>⬅</span> Bali menyang Tebang Wit
           </Link>
         </div>
       </div>

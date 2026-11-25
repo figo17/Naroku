@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   STAGE FLOW (/level2/macan - sebelum /level2/pring):
@@ -46,7 +47,7 @@ function getTigerState(elapsedMs) {
 export default function Level2MacanPage() {
   const router = useRouter();
   const supabase = createClient();
-  const dpadTimerRef = useRef(null);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
   const audioCtxRef = useRef(null);
   const startTimeRef = useRef(0);
@@ -63,7 +64,6 @@ export default function Level2MacanPage() {
 
   const [tiger, setTiger] = useState({ visible: true, dir: 'right', x: 58, remainSafeSec: 0 });
   const tigerRef = useRef({ visible: true, dir: 'right', x: 58, remainSafeSec: 0 });
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
   const [toast, setToast] = useState(null);
 
   const goStage = useCallback((s) => {
@@ -128,12 +128,8 @@ export default function Level2MacanPage() {
     }
   }, []);
 
-  const stopDpadMove = useCallback(() => {
-    setActiveDpadDir(null);
-    if (dpadTimerRef.current) {
-      clearInterval(dpadTimerRef.current);
-      dpadTimerRef.current = null;
-    }
+  const stopAnalog = useCallback(() => {
+    analogRef.current = { x: 0, y: 0, active: false };
   }, []);
 
   const startPlay = useCallback(() => {
@@ -170,13 +166,13 @@ export default function Level2MacanPage() {
 
       // Berhasil melewati jalur macan sampai ujung jalan hutan atas
       if (ny <= 42) {
-        stopDpadMove();
+        stopAnalog();
         setIsWalking(false);
         playSound('victory');
         goStage('done');
       }
     },
-    [goStage, playSound, stopDpadMove]
+    [goStage, playSound, stopAnalog]
   );
 
   // Loop patroli macan + deteksi tabrakan di jalur tengah
@@ -209,22 +205,7 @@ export default function Level2MacanPage() {
     return () => cancelAnimationFrame(raf);
   }, [stage, playSound]);
 
-  const startDpadMove = (dir) => {
-    if (stageRef.current === 'intro') {
-      startPlay();
-      return;
-    }
-    if (stageRef.current !== 'play') return;
-    stopDpadMove();
-    setActiveDpadDir(dir);
-    const step = 1.55;
-    const dx = dir === 'left' ? -step : dir === 'right' ? step : 0;
-    const dy = dir === 'up' ? -step : dir === 'down' ? step : 0;
-    moveCharacter(dx, dy);
-    dpadTimerRef.current = setInterval(() => moveCharacter(dx * 0.85, dy * 0.85), 45);
-  };
-
-  // Keyboard Arrow / WASD
+  // Keyboard Arrow / WASD + Analog
   useEffect(() => {
     const keys = new Set();
     const map = {
@@ -235,14 +216,14 @@ export default function Level2MacanPage() {
     };
     let raf;
     const loop = () => {
-      if (stageRef.current === 'play' && keys.size > 0) {
-        let dx = 0;
-        let dy = 0;
+      if (stageRef.current === 'play') {
+        let dx = analogRef.current.active ? analogRef.current.x * 0.68 : 0;
+        let dy = analogRef.current.active ? analogRef.current.y * 0.68 : 0;
         keys.forEach((k) => {
           dx += map[k][0] * 0.62;
           dy += map[k][1] * 0.62;
         });
-        if (dx || dy) moveCharacter(dx, dy);
+        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -267,13 +248,12 @@ export default function Level2MacanPage() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       cancelAnimationFrame(raf);
-      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startPlay]);
 
   const reset = () => {
-    stopDpadMove();
+    stopAnalog();
     charPosRef.current = START_POS;
     setCharPos(START_POS);
     setFacingLeft(false);
@@ -292,12 +272,6 @@ export default function Level2MacanPage() {
 
   // Skala perspektif saat karakter maju menjauh ke ujung jalan hutan
   const depthScale = Math.max(0.62, Math.min(1.05, 0.62 + ((charPos.y - 36) / 56) * 0.43));
-  const dpadBtns = [
-    { dir: 'up', label: '▲', cls: 'left-[5.2%] top-[77.5%]' },
-    { dir: 'left', label: '◀', cls: 'left-[0.8%] top-[86.2%]' },
-    { dir: 'down', label: '▼', cls: 'left-[5.2%] top-[86.2%]' },
-    { dir: 'right', label: '▶', cls: 'left-[9.6%] top-[86.2%]' },
-  ];
 
   return (
     <div className="relative w-screen h-screen bg-[#041008] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
@@ -349,7 +323,7 @@ export default function Level2MacanPage() {
 
         {/* Status Indikator Macan Kanan Atas */}
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 shadow-xl flex items-center gap-2 text-[10px] sm:text-xs font-bold">
-          {stage === 'intro' && <span className="text-amber-300">🐅 Pencet &ldquo;Mulai Maju&rdquo; utawa D-Pad</span>}
+          {stage === 'intro' && <span className="text-amber-300">🐅 Pencet &ldquo;Mulai Maju&rdquo; utawa Analog</span>}
           {stage === 'play' &&
             (tiger.visible ? (
               <span className="text-red-300">
@@ -460,29 +434,17 @@ export default function Level2MacanPage() {
           </>
         )}
 
-        {/* D-Pad Emulator Visible (HP & PC) */}
-        {stage !== 'done' &&
-          dpadBtns.map(({ dir, label, cls }) => (
-            <button
-              key={dir}
-              type="button"
-              title={dir}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                startDpadMove(dir);
-              }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onPointerCancel={stopDpadMove}
-              className={`absolute ${cls} w-[4.1%] h-[7.6%] rounded-lg z-40 cursor-pointer touch-none flex items-center justify-center border border-yellow-500/70 text-yellow-200 text-[10px] sm:text-xs font-bold transition-all ${
-                activeDpadDir === dir
-                  ? 'bg-yellow-400/50 ring-2 ring-yellow-300 scale-90 text-stone-950'
-                  : 'bg-stone-950/75 hover:bg-stone-900/90 active:scale-90'
-              }`}
-            >
-              {label}
-            </button>
-          ))}
+        {/* Analog Kontroler */}
+        {stage !== 'done' && (
+          <AnalogJoystick
+            onStart={() => {
+              if (stageRef.current === 'intro') startPlay();
+            }}
+            onChange={(v) => {
+              analogRef.current = v;
+            }}
+          />
+        )}
 
         {/* Modal Selesai -> Lanjut ke Kreteg Pring */}
         {stage === 'done' && (

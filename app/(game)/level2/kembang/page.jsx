@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   STAGE FLOW (/level2/kembang - sawise /level2/pring):
@@ -18,7 +19,7 @@ const START_POS = { x: 26.5, y: 87.5 };
 export default function Level2KembangPage() {
   const router = useRouter();
   const supabase = createClient();
-  const dpadTimerRef = useRef(null);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
   const audioCtxRef = useRef(null);
 
@@ -30,7 +31,6 @@ export default function Level2KembangPage() {
   const charPosRef = useRef(START_POS);
   const [facingLeft, setFacingLeft] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
   const [showModal, setShowModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -82,12 +82,8 @@ export default function Level2KembangPage() {
     }
   }, []);
 
-  const stopDpadMove = useCallback(() => {
-    setActiveDpadDir(null);
-    if (dpadTimerRef.current) {
-      clearInterval(dpadTimerRef.current);
-      dpadTimerRef.current = null;
-    }
+  const stopAnalog = useCallback(() => {
+    analogRef.current = { x: 0, y: 0, active: false };
   }, []);
 
   const startWalk = useCallback(() => {
@@ -98,7 +94,7 @@ export default function Level2KembangPage() {
     goStage('walk');
     setToast({
       type: 'info',
-      text: '🌸 Mlaku nyedhaki Kembang Pusaka nganggo D-Pad utawa tombol Panah!',
+      text: '🌸 Mlaku nyedhaki Kembang Pusaka nganggo Analog utawa tombol Panah!',
     });
   }, [goStage]);
 
@@ -122,7 +118,7 @@ export default function Level2KembangPage() {
 
       // Sampai di Kembang Pusaka (sekitar x: 52..69, y: 52..69) -> kabut hilang!
       if (nx >= 52 && nx <= 69 && ny >= 52 && ny <= 69) {
-        stopDpadMove();
+        stopAnalog();
         setIsWalking(false);
         playChime();
         goStage('clear');
@@ -133,23 +129,8 @@ export default function Level2KembangPage() {
         setTimeout(() => setShowModal(true), 1600);
       }
     },
-    [goStage, playChime, stopDpadMove]
+    [goStage, playChime, stopAnalog]
   );
-
-  const startDpadMove = (dir) => {
-    if (stageRef.current === 'intro') {
-      startWalk();
-      return;
-    }
-    if (stageRef.current !== 'walk') return;
-    stopDpadMove();
-    setActiveDpadDir(dir);
-    const step = 1.5;
-    const dx = dir === 'left' ? -step : dir === 'right' ? step : 0;
-    const dy = dir === 'up' ? -step : dir === 'down' ? step : 0;
-    moveCharacter(dx, dy);
-    dpadTimerRef.current = setInterval(() => moveCharacter(dx * 0.85, dy * 0.85), 45);
-  };
 
   useEffect(() => {
     const keys = new Set();
@@ -161,14 +142,14 @@ export default function Level2KembangPage() {
     };
     let raf;
     const loop = () => {
-      if (stageRef.current === 'walk' && keys.size > 0) {
-        let dx = 0;
-        let dy = 0;
+      if (stageRef.current === 'walk') {
+        let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
+        let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
         keys.forEach((k) => {
           dx += map[k][0] * 0.6;
           dy += map[k][1] * 0.6;
         });
-        if (dx || dy) moveCharacter(dx, dy);
+        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -193,13 +174,12 @@ export default function Level2KembangPage() {
       window.removeEventListener('keydown', down);
       window.removeEventListener('keyup', up);
       cancelAnimationFrame(raf);
-      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startWalk]);
 
   const reset = () => {
-    stopDpadMove();
+    stopAnalog();
     charPosRef.current = START_POS;
     setCharPos(START_POS);
     setFacingLeft(false);
@@ -218,12 +198,6 @@ export default function Level2KembangPage() {
   }
 
   const depthScale = Math.max(0.72, Math.min(1.04, 0.72 + ((charPos.y - 52) / 40) * 0.32));
-  const dpadBtns = [
-    { dir: 'up', cls: 'left-[5.3%] top-[80.2%]' },
-    { dir: 'left', cls: 'left-[0.7%] top-[88.4%]' },
-    { dir: 'down', cls: 'left-[5.3%] top-[88.4%]' },
-    { dir: 'right', cls: 'left-[10.1%] top-[88.4%]' },
-  ];
 
   return (
     <div className="relative w-screen h-screen bg-[#070d0a] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
@@ -375,29 +349,17 @@ export default function Level2KembangPage() {
           </div>
         )}
 
-        {/* D-Pad Emulator */}
-        {stage !== 'clear' &&
-          dpadBtns.map(({ dir, cls }) => (
-            <button
-              key={dir}
-              type="button"
-              title={dir}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                startDpadMove(dir);
-              }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onPointerCancel={stopDpadMove}
-              className={`absolute ${cls} w-[4.3%] h-[7.5%] rounded-lg z-40 cursor-pointer touch-none transition-all ${
-                activeDpadDir === dir
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90'
-                  : 'hover:bg-yellow-400/20 active:scale-90'
-              }`}
-            >
-              <span className="sr-only">{dir}</span>
-            </button>
-          ))}
+        {/* Analog Kontroler */}
+        {stage !== 'clear' && (
+          <AnalogJoystick
+            onStart={() => {
+              if (stageRef.current === 'intro') startWalk();
+            }}
+            onChange={(v) => {
+              analogRef.current = v;
+            }}
+          />
+        )}
 
         {/* Tombol Lanjut Melayang jika Modal Ditutup untuk Melihat Background Tanpa Kabut */}
         {stage === 'clear' && !showModal && (

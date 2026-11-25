@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   SCENE FLOW:
@@ -18,7 +19,7 @@ import { createClient } from '@/lib/supabase/client';
 export default function Level2AlasKapakPage() {
   const router = useRouter();
   const supabase = createClient();
-  const dpadTimerRef = useRef(null);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
   const audioCtxRef = useRef(null);
 
@@ -39,7 +40,6 @@ export default function Level2AlasKapakPage() {
   const chopProgressRef = useRef(0);
   const [isChopping, setIsChopping] = useState(false);
   const [woodChips, setWoodChips] = useState([]);
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
   const [showCutModal, setShowCutModal] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -136,7 +136,7 @@ export default function Level2AlasKapakPage() {
     setChopProgress(0);
     chopProgressRef.current = 0;
     setShowCutModal(false);
-    showToast('🚶 Mlaku nyedhaki kapak nganggo tombol Panah utawa D-Pad!', 'info');
+    showToast('🚶 Mlaku nyedhaki kapak nganggo tombol Panah utawa Analog!', 'info');
   }, [showToast]);
 
   // Move character in 'play' scene
@@ -208,54 +208,21 @@ export default function Level2AlasKapakPage() {
     }
   }, [playSound, showToast]);
 
-  // D-Pad emulator handlers
-  const startDpadMove = (dir) => {
-    if (sceneRef.current === 'intro') {
-      startPlayScene();
-      return;
-    }
-    if (sceneRef.current !== 'play') return;
-
-    setActiveDpadDir(dir);
-    if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
-
-    const step = 1.6;
-    let dx = 0;
-    let dy = 0;
-    if (dir === 'up') dy = -step;
-    if (dir === 'down') dy = step;
-    if (dir === 'left') dx = -step;
-    if (dir === 'right') dx = step;
-
-    moveCharacter(dx, dy);
-    dpadTimerRef.current = setInterval(() => {
-      moveCharacter(dx * 0.85, dy * 0.85);
-    }, 45);
-  };
-
-  const stopDpadMove = () => {
-    setActiveDpadDir(null);
-    if (dpadTimerRef.current) {
-      clearInterval(dpadTimerRef.current);
-      dpadTimerRef.current = null;
-    }
-  };
-
-  // Keyboard Arrow / WASD + Space/Enter handlers
+  // Keyboard Arrow / WASD + Analog + Space/Enter handlers
   useEffect(() => {
     const activeKeys = new Set();
     let animFrameId = null;
 
     const loop = () => {
-      if (activeKeys.size > 0 && sceneRef.current === 'play') {
+      if (sceneRef.current === 'play') {
         const step = 0.65;
-        let dx = 0;
-        let dy = 0;
+        let dx = analogRef.current.active ? analogRef.current.x * 0.7 : 0;
+        let dy = analogRef.current.active ? analogRef.current.y * 0.7 : 0;
         if (activeKeys.has('ArrowUp') || activeKeys.has('KeyW')) dy -= step;
         if (activeKeys.has('ArrowDown') || activeKeys.has('KeyS')) dy += step;
         if (activeKeys.has('ArrowLeft') || activeKeys.has('KeyA')) dx -= step;
         if (activeKeys.has('ArrowRight') || activeKeys.has('KeyD')) dx += step;
-        if (dx !== 0 || dy !== 0) moveCharacter(dx, dy);
+        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
       }
       animFrameId = requestAnimationFrame(loop);
     };
@@ -288,7 +255,6 @@ export default function Level2AlasKapakPage() {
       window.removeEventListener('keydown', onKeyDown);
       window.removeEventListener('keyup', onKeyUp);
       if (animFrameId) cancelAnimationFrame(animFrameId);
-      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startPlayScene, swingAxe]);
@@ -395,9 +361,9 @@ export default function Level2AlasKapakPage() {
               {scene === 'intro' ? (
                 <>👆 Pencet &ldquo;Gunakake kapak&rdquo; kanggo miwiti</>
               ) : !hasAxe ? (
-                <>🎮 Kontrol: D-Pad / Arrow Keys — Jupuk kapak ing lemah!</>
+                <>🕹️ Kontrol: Analog / Arrow Keys — Jupuk kapak ing lemah!</>
               ) : !nearTree ? (
-                <>🚶 Mlaku menyang ngarep wit gedhe nganggo D-Pad / Arrow Keys!</>
+                <>🚶 Mlaku menyang ngarep wit gedhe nganggo Analog / Arrow Keys!</>
               ) : (
                 <>🪓 Pencet &ldquo;Ayunkan Kapak&rdquo; utawa Spasi kanggo nugel wit!</>
               )}
@@ -583,87 +549,16 @@ export default function Level2AlasKapakPage() {
           </>
         )}
 
-        {/* ========================================================
-            D-PAD EMULATOR (POJOK KIRI BAWAH — AKTIF DI INTRO & PLAY)
-           ======================================================== */}
+        {/* KONTROLER ANALOG 360° (AKTIF DI INTRO & PLAY) */}
         {scene !== 'cut' && (
-          <div className="pointer-events-auto select-none">
-            {/* Atas (▲) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('up'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('up'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Mendhuwur (▲)"
-              className={`absolute left-[5.4%] top-[78.1%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'up'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Dhuwur</span>
-            </button>
-
-            {/* Kiwa (◀) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('left'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('left'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Ngiwa (◀)"
-              className={`absolute left-[0.9%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'left'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Kiwa</span>
-            </button>
-
-            {/* Ngisor (▼) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('down'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('down'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Mengisor (▼)"
-              className={`absolute left-[5.4%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'down'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Ngisor</span>
-            </button>
-
-            {/* Tengen (▶) */}
-            <button
-              type="button"
-              onPointerDown={(e) => { e.preventDefault(); startDpadMove('right'); }}
-              onPointerUp={stopDpadMove}
-              onPointerLeave={stopDpadMove}
-              onTouchStart={(e) => { e.preventDefault(); startDpadMove('right'); }}
-              onTouchEnd={stopDpadMove}
-              onTouchCancel={stopDpadMove}
-              title="Mlaku Nengen (▶)"
-              className={`absolute left-[9.8%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
-                activeDpadDir === 'right'
-                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
-              }`}
-            >
-              <span className="sr-only">Panah Tengen</span>
-            </button>
-          </div>
+          <AnalogJoystick
+            onStart={() => {
+              if (sceneRef.current === 'intro') startPlayScene();
+            }}
+            onChange={(v) => {
+              analogRef.current = v;
+            }}
+          />
         )}
 
         {/* ========================================================

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 /*
   STAGE FLOW (/level2/labirin - sawise /level2/kembang):
@@ -36,11 +37,9 @@ export default function Level2LabirinPage() {
   const [facingLeft, setFacingLeft] = useState(false);
   const [leanDeg, setLeanDeg] = useState(0);
 
-  // Unified Controller Input (D-Pad Touch/Slide + Keyboard WASD/Arrows)
-  const dpadDirRef = useRef(null);
-  const [activeDpadDir, setActiveDpadDir] = useState(null);
+  // Unified Controller Input (360° Analog Stick + Keyboard WASD/Arrows)
+  const analogRef = useRef({ x: 0, y: 0, active: false });
   const keysRef = useRef(new Set());
-  const pointerDownRef = useRef(false);
   const mistWarnCooldownRef = useRef(0);
   const [toast, setToast] = useState(null);
 
@@ -116,20 +115,9 @@ export default function Level2LabirinPage() {
     goStage('walk');
     setToast({
       type: 'info',
-      text: '🌿 Gunakake kontroler D-Pad utawa tombol Panah kanggo mlaku menyang Gerbang Labirin!',
+      text: '🌿 Gunakake Analog utawa tombol Panah kanggo mlaku menyang Gerbang Labirin!',
     });
   }, [goStage]);
-
-  const setDpadDirection = useCallback(
-    (dir) => {
-      if (dir && stageRef.current === 'intro') {
-        startWalk();
-      }
-      dpadDirRef.current = dir;
-      setActiveDpadDir(dir);
-    },
-    [startWalk]
-  );
 
   // Unified 60fps Physics + 8-Frame Footstep Animation Loop
   useEffect(() => {
@@ -142,23 +130,13 @@ export default function Level2LabirinPage() {
       lastTime = now;
 
       if (stageRef.current === 'walk') {
-        let ix = 0;
-        let iy = 0;
+        let ix = analogRef.current.x;
+        let iy = analogRef.current.y;
         const keys = keysRef.current;
         if (keys.has('ArrowLeft') || keys.has('KeyA')) ix -= 1;
         if (keys.has('ArrowRight') || keys.has('KeyD')) ix += 1;
         if (keys.has('ArrowUp') || keys.has('KeyW')) iy -= 1;
         if (keys.has('ArrowDown') || keys.has('KeyS')) iy += 1;
-
-        const dpad = dpadDirRef.current;
-        if (dpad === 'left') ix -= 1;
-        if (dpad === 'right') ix += 1;
-        if (dpad === 'up') iy -= 1;
-        if (dpad === 'down') iy += 1;
-        if (dpad === 'upleft') { ix -= 0.75; iy -= 0.75; }
-        if (dpad === 'upright') { ix += 0.75; iy -= 0.75; }
-        if (dpad === 'downleft') { ix -= 0.75; iy += 0.75; }
-        if (dpad === 'downright') { ix += 0.75; iy += 0.75; }
 
         // Normalize diagonal input so diagonal speed isn't faster
         const mag = Math.hypot(ix, iy);
@@ -221,8 +199,7 @@ export default function Level2LabirinPage() {
 
           // Sampai di Gerbang Labirin (kanan: x 73..86, y 68..90)
           if (nx >= 73 && nx <= 86 && ny >= 68 && ny <= 90) {
-            dpadDirRef.current = null;
-            setActiveDpadDir(null);
+            analogRef.current = { x: 0, y: 0, active: false };
             velRef.current = { vx: 0, vy: 0 };
             setIsMoving(false);
             setWalkFrame(0);
@@ -259,8 +236,7 @@ export default function Level2LabirinPage() {
     const onUp = (e) => keysRef.current.delete(e.code);
     const onBlur = () => {
       keysRef.current.clear();
-      dpadDirRef.current = null;
-      setActiveDpadDir(null);
+      analogRef.current = { x: 0, y: 0, active: false };
     };
     window.addEventListener('keydown', onDown);
     window.addEventListener('keyup', onUp);
@@ -272,28 +248,8 @@ export default function Level2LabirinPage() {
     };
   }, [startWalk]);
 
-  // Smooth Thumb-Slide D-Pad Handler
-  const updateDpadFromPointer = (clientX, clientY, padEl) => {
-    const rect = padEl.getBoundingClientRect();
-    const dx = clientX - (rect.left + rect.width / 2);
-    const dy = clientY - (rect.top + rect.height / 2);
-    const dist = Math.hypot(dx, dy);
-    if (dist < rect.width * 0.1) return;
-
-    const angle = (Math.atan2(dy, dx) * 180) / Math.PI; // -180..180
-    if (angle >= -22.5 && angle < 22.5) setDpadDirection('right');
-    else if (angle >= 22.5 && angle < 67.5) setDpadDirection('downright');
-    else if (angle >= 67.5 && angle < 112.5) setDpadDirection('down');
-    else if (angle >= 112.5 && angle < 157.5) setDpadDirection('downleft');
-    else if (angle >= -67.5 && angle < -22.5) setDpadDirection('upright');
-    else if (angle >= -112.5 && angle < -67.5) setDpadDirection('up');
-    else if (angle >= -157.5 && angle < -112.5) setDpadDirection('upleft');
-    else setDpadDirection('left');
-  };
-
   const reset = () => {
-    dpadDirRef.current = null;
-    setActiveDpadDir(null);
+    analogRef.current = { x: 0, y: 0, active: false };
     posRef.current = { ...START_POS };
     velRef.current = { vx: 0, vy: 0 };
     setCharPos(START_POS);
@@ -477,78 +433,16 @@ export default function Level2LabirinPage() {
           </div>
         )}
 
-        {/* ========================================================
-            KONTROLER D-PAD MULUS (SUPPORT SENTUH TAHAN & GESER JARI)
-           ======================================================== */}
+        {/* KONTROLER ANALOG 360° MULUS */}
         {stage !== 'done' && (
-          <div
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.currentTarget.setPointerCapture(e.pointerId);
-              pointerDownRef.current = true;
-              updateDpadFromPointer(e.clientX, e.clientY, e.currentTarget);
+          <AnalogJoystick
+            onStart={() => {
+              if (stageRef.current === 'intro') startWalk();
             }}
-            onPointerMove={(e) => {
-              if (!pointerDownRef.current) return;
-              updateDpadFromPointer(e.clientX, e.clientY, e.currentTarget);
+            onChange={(v) => {
+              analogRef.current = v;
             }}
-            onPointerUp={() => {
-              pointerDownRef.current = false;
-              setDpadDirection(null);
-            }}
-            onPointerCancel={() => {
-              pointerDownRef.current = false;
-              setDpadDirection(null);
-            }}
-            className="absolute left-[1.8%] bottom-[4.5%] w-28 h-24 sm:w-36 sm:h-28 z-40 touch-none select-none grid grid-cols-3 grid-rows-2 gap-1.5 p-1"
-            title="Kontroler Gerak Putri (Tahan utawa geser driji)"
-          >
-            <div />
-            {/* Atas (▲) */}
-            <div
-              className={`rounded-xl border flex items-center justify-center font-bold text-xs sm:text-sm shadow-lg transition-transform ${
-                activeDpadDir?.includes('up')
-                  ? 'bg-yellow-400/65 border-yellow-200 text-stone-950 scale-95 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'bg-stone-950/80 border-yellow-500/70 text-yellow-200 hover:bg-stone-900'
-              }`}
-            >
-              ▲
-            </div>
-            <div />
-
-            {/* Kiri (◀) */}
-            <div
-              className={`rounded-xl border flex items-center justify-center font-bold text-xs sm:text-sm shadow-lg transition-transform ${
-                activeDpadDir?.includes('left')
-                  ? 'bg-yellow-400/65 border-yellow-200 text-stone-950 scale-95 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'bg-stone-950/80 border-yellow-500/70 text-yellow-200 hover:bg-stone-900'
-              }`}
-            >
-              ◀
-            </div>
-
-            {/* Bawah (▼) */}
-            <div
-              className={`rounded-xl border flex items-center justify-center font-bold text-xs sm:text-sm shadow-lg transition-transform ${
-                activeDpadDir?.includes('down')
-                  ? 'bg-yellow-400/65 border-yellow-200 text-stone-950 scale-95 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'bg-stone-950/80 border-yellow-500/70 text-yellow-200 hover:bg-stone-900'
-              }`}
-            >
-              ▼
-            </div>
-
-            {/* Kanan (▶) */}
-            <div
-              className={`rounded-xl border flex items-center justify-center font-bold text-xs sm:text-sm shadow-lg transition-transform ${
-                activeDpadDir?.includes('right')
-                  ? 'bg-yellow-400/65 border-yellow-200 text-stone-950 scale-95 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
-                  : 'bg-stone-950/80 border-yellow-500/70 text-yellow-200 hover:bg-stone-900'
-              }`}
-            >
-              ▶
-            </div>
-          </div>
+          />
         )}
 
         {/* Modal Selesai Masuk Gerbang Labirin */}

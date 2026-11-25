@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import AnalogJoystick from '@/components/game/AnalogJoystick';
 
 export default function Level2MucukPage() {
   const router = useRouter();
@@ -98,29 +99,14 @@ export default function Level2MucukPage() {
           <span className="sr-only">Banjur</span>
         </button>
 
-        {/* ========================================================
-            D-PAD NAVIGASI DI KIRI BAWAH
-            (Tombol Kiri: Kembali ke Nanjak, Tombol Kanan: Banjur ke Alas)
-           ======================================================== */}
-        {/* Tombol Kiri (⬅) */}
-        <button
-          type="button"
-          onClick={() => router.push('/level2/nanjak')}
-          title="Bali menyang Tugas Nulis (Nanjak)"
-          className="absolute left-[0.9%] top-[77.0%] w-[4.0%] h-[15.0%] rounded-lg bg-transparent hover:bg-yellow-400/20 active:scale-95 transition-all cursor-pointer z-30"
-        >
-          <span className="sr-only">Bali</span>
-        </button>
-
-        {/* Tombol Kanan (➡) */}
-        <button
-          type="button"
-          onClick={() => router.push('/level2/alas')}
-          title="Banjur menyang Alas Gunung Wilis"
-          className="absolute left-[9.7%] top-[77.0%] w-[4.0%] h-[15.0%] rounded-lg bg-transparent hover:bg-yellow-400/20 active:scale-95 transition-all cursor-pointer z-30"
-        >
-          <span className="sr-only">Banjur</span>
-        </button>
+        {/* KONTROLER ANALOG DI KIRI BAWAH */}
+        <AnalogJoystick
+          onChange={({ x, active }) => {
+            if (!active) return;
+            if (x > 0.7) router.push('/level2/alas');
+            else if (x < -0.7) router.push('/level2/nanjak');
+          }}
+        />
 
         {/* ========================================================
             BUBBLE PERCAKAPAN INTERAKTIF (KLIK UNTUK MODAL)
@@ -139,8 +125,8 @@ export default function Level2MucukPage() {
           className="absolute left-[27.6%] top-[27.5%] w-[14.5%] h-[17.0%] rounded-2xl bg-transparent hover:bg-yellow-400/10 cursor-pointer z-20"
         />
 
-        {/* Tombol Pojok Bawah: Navigasi Cepat */}
-        <div className="absolute bottom-2 left-4 z-30">
+        {/* Tombol Pojok Atas Kiri: Navigasi Cepat */}
+        <div className="absolute top-2.5 left-4 z-35">
           <Link
             href="/level2/nanjak"
             className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
