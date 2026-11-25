@@ -17,6 +17,7 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 */
 
 const START_POS = { x: 27.5, y: 95.0 };
+const PING_PONG_FRAMES = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1];
 
 export default function Level2LabirinPage() {
   const router = useRouter();
@@ -178,13 +179,13 @@ export default function Level2LabirinPage() {
           setCharPos({ x: nx, y: ny });
           setIsMoving(true);
 
-          // Advance 8-frame walk cycle proportional to real stride speed
-          walkPhaseRef.current = (walkPhaseRef.current + speed * dt * 0.52) % 8;
-          const frameIdx = Math.floor(walkPhaseRef.current);
-          setWalkFrame(frameIdx);
+          // Advance 10-step ping-pong pixel-art walk cycle (frames 0..5..0)
+          walkPhaseRef.current = (walkPhaseRef.current + speed * dt * 0.72) % 10;
+          const stepIdx = Math.floor(walkPhaseRef.current);
+          setWalkFrame(stepIdx);
 
-          if ((frameIdx === 1 || frameIdx === 5) && frameIdx !== lastStepFrame) {
-            lastStepFrame = frameIdx;
+          if ((stepIdx === 2 || stepIdx === 7) && stepIdx !== lastStepFrame) {
+            lastStepFrame = stepIdx;
             playSound('step');
           }
 
@@ -273,25 +274,27 @@ export default function Level2LabirinPage() {
 
   // Perspektif kedalaman halus saat mendekati gerbang labirin
   const depthScale = Math.max(0.7, Math.min(1.04, 0.7 + ((charPos.y - 58) / 31) * 0.34));
-  const kuningFramePct = (walkFrame / 7) * 100;
-  const runtingFramePct = (((walkFrame + 1) % 8) / 7) * 100;
+  const kuningFrame = isMoving ? PING_PONG_FRAMES[walkFrame % 10] : 0;
+  const runtingFrame = isMoving ? PING_PONG_FRAMES[(walkFrame + 2) % 10] : 0;
+  const kuningFramePct = (kuningFrame / 5) * 100;
+  const runtingFramePct = (runtingFrame / 5) * 100;
 
   return (
     <div className="relative w-screen h-screen bg-[#071108] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
       <style>{`
         @keyframes idleSoft {
           0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-2.5px); }
+          50% { transform: translateY(-2px); }
         }
-        .anim-idle-soft { animation: idleSoft 2.4s ease-in-out infinite; }
+        .anim-idle-soft { animation: idleSoft 2.2s steps(2, end) infinite; }
       `}</style>
 
-      {/* Preload Walk Cycle Spritesheets supaya transisi langsung mulus tanpa kedip */}
+      {/* Preload Pixel Art Walk Cycle Spritesheets */}
       <div className="hidden" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/level2/walk-rara-kuning-sheet.png" alt="" />
+        <img src="/assets/level2/pixel-walk-kuning.png" alt="" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src="/assets/level2/walk-rara-runting-sheet.png" alt="" />
+        <img src="/assets/level2/pixel-walk-runting.png" alt="" />
       </div>
 
       {/* Ambient Full-Screen Backdrop (menutup 100% layar di rasio apa pun tanpa bar putih/hitam) */}
@@ -397,36 +400,34 @@ export default function Level2LabirinPage() {
                 transition: 'transform 0.14s ease-out',
               }}
             >
-              {/* Putri Rara Kuning (Kiri - sesuai posisi di background intro) */}
+              {/* Putri Rara Kuning (Kebaya Kuning Selendang Merah - Pixel Art 6-Frame) */}
               <div
                 aria-label="Putri Rara Kuning"
                 style={{
-                  width: '8.2vw',
-                  maxWidth: 96,
-                  minWidth: 50,
-                  aspectRatio: '269 / 347',
-                  backgroundImage: "url('/assets/level2/walk-rara-kuning-sheet.png')",
-                  backgroundSize: '800% 100%',
-                  backgroundPosition: `${isMoving ? kuningFramePct : 0}% 0%`,
+                  height: 'clamp(76px, 21vh, 146px)',
+                  aspectRatio: '143 / 338',
+                  backgroundImage: "url('/assets/level2/pixel-walk-kuning.png')",
+                  backgroundSize: '600% 100%',
+                  backgroundPosition: `${kuningFramePct}% 0%`,
                   backgroundRepeat: 'no-repeat',
-                  filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.82))',
+                  imageRendering: 'pixelated',
+                  filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
                 }}
               />
 
-              {/* Putri Rara Runting (Kanan - bergandengan & langkah kaki selaras) */}
+              {/* Putri Rara Runting (Kebaya Hijau - Pixel Art 6-Frame) */}
               <div
                 aria-label="Putri Rara Runting"
-                className="-ml-3.5"
+                className="-ml-2"
                 style={{
-                  width: '6.5vw',
-                  maxWidth: 76,
-                  minWidth: 40,
-                  aspectRatio: '158 / 331',
-                  backgroundImage: "url('/assets/level2/walk-rara-runting-sheet.png')",
-                  backgroundSize: '800% 100%',
-                  backgroundPosition: `${isMoving ? runtingFramePct : 0}% 0%`,
+                  height: 'clamp(74px, 20.4vh, 142px)',
+                  aspectRatio: '155 / 329',
+                  backgroundImage: "url('/assets/level2/pixel-walk-runting.png')",
+                  backgroundSize: '600% 100%',
+                  backgroundPosition: `${runtingFramePct}% 0%`,
                   backgroundRepeat: 'no-repeat',
-                  filter: 'drop-shadow(0 8px 12px rgba(0,0,0,0.82))',
+                  imageRendering: 'pixelated',
+                  filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
                 }}
               />
             </div>
