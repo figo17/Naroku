@@ -716,10 +716,10 @@ export default function Level2JurangTaliPage() {
                 Baleni Dolanan 🔄
               </button>
               <Link
-                href="/peta"
+                href="/level2/gua"
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>🗺️</span> Lanjut menyang Peta Petualangan →
+                <span>🔥</span> Lanjut menyang Guwa (Misi Obor) →
               </Link>
             </div>
           </div>
