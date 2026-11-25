@@ -230,8 +230,8 @@ export default function Level2PringPage() {
 
         {/* Navigasi */}
         <div className="absolute top-3 left-4 z-40 flex gap-2">
-          <Link href="/level2/gua" className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold">
-            ⬅ Guwa
+          <Link href="/level2/macan" className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold">
+            ⬅ Alas Macan
           </Link>
           <Link href="/peta" className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold">
             🗺️ Peta

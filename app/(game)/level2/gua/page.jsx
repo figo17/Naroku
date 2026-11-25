@@ -597,10 +597,10 @@ export default function Level2GuaOborPage() {
                   Baleni Misi 🔄
                 </button>
                 <Link
-                  href="/level2/pring"
+                  href="/level2/macan"
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
                 >
-                  <span>🎋</span> Lanjut menyang Kreteg Pring →
+                  <span>🐅</span> Lanjut menyang Alas Macan →
                 </Link>
               </div>
             </div>
