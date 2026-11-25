@@ -1,47 +1,61 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 
 /*
-  PHASE STATE MACHINE
-  -------------------
-  'intro'           → Roro Kuning & Runting berdiri di kiri, kapak di tanah, tombol "Gunakake Kapak" muncul
-  'walking_to_axe'  → Karakter berjalan ke kanan menuju kapak (CSS transition left)
-  'pickup'          → Sparkle + efek ambil kapak, kapak melayang di atas karakter
-  'walking_to_tree' → Karakter berjalan ke kanan menuju pohon tumbang dengan kapak
-  'chopping'        → Animasi menggergaji pohon (kapak swing + wood chip particles)
-  'done'            → Modal sukses, lanjut ke kali
+  SCENE FLOW:
+  1. 'intro' -> Background lengkap (screen_alas_kapak.jpg) dengan karakter, dialog, kapak & tombol "Gunakake kapak".
+  2. 'play'  -> Background tanpa karakter cewek (screen_alas_tanpa_cewe_kapak.jpg -> setelah kapak diambil jadi screen_alas_tanpa_cewe_kosong.jpg).
+                Karakter Rara Kuning & Rara Runting bisa digerakkan dengan D-Pad Emulator (HP) & Arrow/WASD (PC).
+                Ambil kapak -> jalan ke depan pohon -> ayunkan kapak untuk mengisi Bar Tebang Pohon hingga 100%.
+  3. 'cut'   -> Background pohon sudah ditebang (screen_alas_pohon_ditebang.jpg) tanpa cewek, tanpa kapak, dan tanpa tombol "Gunakake kapak".
 */
-
-// Posisi karakter (dalam persen, relatif ke container 1024×512)
-const CHAR_POS = {
-  intro:        { left: '10%',  bottom: '12%' },  // kiri, di atas jalan
-  atAxe:        { left: '33%',  bottom: '12%' },  // dekat kapak
-  atTree:       { left: '58%',  bottom: '20%' },  // dekat pohon tumbang
-};
-
-// Posisi kapak saat di tanah (persen 1024×512)
-const AXE_ON_GROUND = { left: '39%', bottom: '14%' };
 
 export default function Level2AlasKapakPage() {
   const router = useRouter();
   const supabase = createClient();
+  const dpadTimerRef = useRef(null);
+  const walkStopTimerRef = useRef(null);
+  const audioCtxRef = useRef(null);
 
-  const [loading, setLoading]   = useState(true);
-  const [phase, setPhase]       = useState('intro');   // state machine
-  const [woodChips, setWoodChips] = useState([]);       // partikel tatal kayu
-  const phaseRef = useRef('intro');
+  const [loading, setLoading] = useState(true);
+  const [scene, setScene] = useState('intro'); // 'intro' | 'play' | 'cut'
+  const sceneRef = useRef('intro');
 
-  // ─── Auth ────────────────────────────────────────────────────────────────
+  // Character position in % of 1024x512 container (bottom-center anchor)
+  const [charPos, setCharPos] = useState({ x: 22, y: 78 });
+  const charPosRef = useRef({ x: 22, y: 78 });
+  const [facingLeft, setFacingLeft] = useState(false);
+  const [isWalking, setIsWalking] = useState(false);
+
+  // Gameplay states in 'play' scene
+  const [hasAxe, setHasAxe] = useState(false);
+  const hasAxeRef = useRef(false);
+  const [chopProgress, setChopProgress] = useState(0);
+  const chopProgressRef = useRef(0);
+  const [isChopping, setIsChopping] = useState(false);
+  const [woodChips, setWoodChips] = useState([]);
+  const [activeDpadDir, setActiveDpadDir] = useState(null);
+  const [showCutModal, setShowCutModal] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  useEffect(() => { sceneRef.current = scene; }, [scene]);
+  useEffect(() => { hasAxeRef.current = hasAxe; }, [hasAxe]);
+  useEffect(() => { chopProgressRef.current = chopProgress; }, [chopProgress]);
+
+  // Auth check
   useEffect(() => {
     async function loadData() {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (!user) { router.push('/login?role=murid'); return; }
+        if (!user) {
+          router.push('/login?role=murid');
+          return;
+        }
       } catch (err) {
         console.error('Level 2 Alas auth error:', err);
       } finally {
@@ -51,64 +65,247 @@ export default function Level2AlasKapakPage() {
     loadData();
   }, [router, supabase]);
 
-  // ─── Phase Transition Helper ─────────────────────────────────────────────
-  function goPhase(next) {
-    phaseRef.current = next;
-    setPhase(next);
-  }
+  // Sound effects
+  const playSound = useCallback((type) => {
+    if (typeof window === 'undefined') return;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!audioCtxRef.current && AudioCtx) audioCtxRef.current = new AudioCtx();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
 
-  // ─── Tombol "Gunakake Kapak" ditekan → mulai walk ────────────────────────
-  function handleStart() {
-    if (phaseRef.current !== 'intro') return;
-    goPhase('walking_to_axe');
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      if (type === 'pickup') {
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(720, now);
+        osc.frequency.exponentialRampToValueAtTime(1440, now + 0.14);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 0.17);
+      } else if (type === 'chop') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(180, now);
+        osc.frequency.exponentialRampToValueAtTime(65, now + 0.18);
+        gain.gain.setValueAtTime(0.32, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 0.21);
+      } else if (type === 'success') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(523.25, now);
+        osc.frequency.setValueAtTime(659.25, now + 0.1);
+        osc.frequency.setValueAtTime(783.99, now + 0.2);
+        gain.gain.setValueAtTime(0.25, now);
+        gain.gain.exponentialRampToValueAtTime(0.01, now + 0.45);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(now); osc.stop(now + 0.46);
+      }
+    } catch {
+      // Ignore audio restriction errors
+    }
+  }, []);
 
-    // Setelah karakter sampai di kapak (2.4 detik)
-    setTimeout(() => {
-      goPhase('pickup');
+  const showToast = useCallback((text, type = 'info') => {
+    setToast({ text, type });
+  }, []);
 
-      // Setelah animasi pickup (1.0 detik) → jalan ke pohon
-      setTimeout(() => {
-        goPhase('walking_to_tree');
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
-        // Setelah sampai di pohon (2.4 detik) → mulai menggergaji
-        setTimeout(() => {
-          goPhase('chopping');
-          spawnWoodChips();
+  // Check if character is in front of the fallen tree
+  const isNearTree = (pos) => {
+    return pos.x >= 40 && pos.x <= 78 && pos.y >= 46 && pos.y <= 78;
+  };
 
-          // Setelah menggergaji (4.0 detik) → selesai
-          setTimeout(() => {
-            goPhase('done');
-          }, 4000);
-        }, 2400);
-      }, 1000);
-    }, 2400);
-  }
+  // Start Scene 2 ('play') from Scene 1 ('intro')
+  const startPlayScene = useCallback(() => {
+    if (sceneRef.current !== 'intro') return;
+    setScene('play');
+    sceneRef.current = 'play';
+    setCharPos({ x: 22, y: 78 });
+    charPosRef.current = { x: 22, y: 78 };
+    setHasAxe(false);
+    hasAxeRef.current = false;
+    setChopProgress(0);
+    chopProgressRef.current = 0;
+    setShowCutModal(false);
+    showToast('🚶 Mlaku nyedhaki kapak nganggo tombol Panah utawa D-Pad!', 'info');
+  }, [showToast]);
 
-  // ─── Wood Chip Particles ─────────────────────────────────────────────────
-  function spawnWoodChips() {
-    const chips = Array.from({ length: 8 }, (_, i) => ({
-      id: i,
-      dx: (Math.random() - 0.5) * 60,
-      dy: -(Math.random() * 50 + 20),
+  // Move character in 'play' scene
+  const moveCharacter = useCallback((dx, dy) => {
+    if (sceneRef.current !== 'play') return;
+
+    if (dx < -0.05) setFacingLeft(true);
+    else if (dx > 0.05) setFacingLeft(false);
+
+    setIsWalking(true);
+    if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
+    walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 160);
+
+    const prev = charPosRef.current;
+    // Constrain movement within forest path bounds
+    const nx = Math.max(10, Math.min(86, prev.x + dx));
+    const ny = Math.max(48, Math.min(92, prev.y + dy));
+    const nextPos = { x: nx, y: ny };
+    charPosRef.current = nextPos;
+    setCharPos(nextPos);
+
+    // Auto-pickup axe when walking close to axe on ground (x: 37..52, y: 66..88)
+    if (!hasAxeRef.current && nx >= 37 && nx <= 52 && ny >= 66 && ny <= 88) {
+      hasAxeRef.current = true;
+      setHasAxe(true);
+      playSound('pickup');
+      showToast('🪓 Kapak kasil dijupuk! Saiki mlaku menyang ngarep wit gedhe!', 'success');
+    }
+  }, [playSound, showToast]);
+
+  // Swing axe at tree
+  const swingAxe = useCallback(() => {
+    if (sceneRef.current !== 'play') return;
+    if (!hasAxeRef.current) {
+      showToast('⚠️ Jupuk kapak ing lemah dhisik!', 'info');
+      return;
+    }
+    if (!isNearTree(charPosRef.current)) {
+      showToast('⚠️ Karakter kudu ana ing ngarep wit gedhe kanggo ngayunake kapak!', 'info');
+      return;
+    }
+    if (chopProgressRef.current >= 100) return;
+
+    setIsChopping(true);
+    playSound('chop');
+    setTimeout(() => setIsChopping(false), 320);
+
+    // Spawn wood chips
+    const batchId = Date.now();
+    const newChips = Array.from({ length: 6 }, (_, i) => ({
+      id: `${batchId}-${i}`,
+      dx: (Math.random() - 0.5) * 70,
+      dy: -(Math.random() * 45 + 15),
       rot: Math.random() * 360,
-      delay: Math.random() * 0.5,
     }));
-    setWoodChips(chips);
-    setTimeout(() => setWoodChips([]), 2000);
-  }
+    setWoodChips((prev) => [...prev.slice(-10), ...newChips]);
 
-  // ─── Derived values dari phase ────────────────────────────────────────────
-  const isWalking   = phase === 'walking_to_axe' || phase === 'walking_to_tree';
-  const hasAxe      = ['pickup', 'walking_to_tree', 'chopping', 'done'].includes(phase);
-  const isChopping  = phase === 'chopping';
-  const isDone      = phase === 'done';
+    const nextProgress = Math.min(100, chopProgressRef.current + 20);
+    chopProgressRef.current = nextProgress;
+    setChopProgress(nextProgress);
 
-  // Posisi karakter sesuai phase
-  let charPos = CHAR_POS.intro;
-  if (phase === 'walking_to_axe' || phase === 'pickup') charPos = CHAR_POS.atAxe;
-  if (phase === 'walking_to_tree' || phase === 'chopping' || phase === 'done') charPos = CHAR_POS.atTree;
+    if (nextProgress >= 100) {
+      playSound('success');
+      setTimeout(() => {
+        setScene('cut');
+        sceneRef.current = 'cut';
+        setTimeout(() => setShowCutModal(true), 1200);
+      }, 450);
+    }
+  }, [playSound, showToast]);
 
-  // ─── Loading Screen ───────────────────────────────────────────────────────
+  // D-Pad emulator handlers
+  const startDpadMove = (dir) => {
+    if (sceneRef.current === 'intro') {
+      startPlayScene();
+      return;
+    }
+    if (sceneRef.current !== 'play') return;
+
+    setActiveDpadDir(dir);
+    if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
+
+    const step = 1.6;
+    let dx = 0;
+    let dy = 0;
+    if (dir === 'up') dy = -step;
+    if (dir === 'down') dy = step;
+    if (dir === 'left') dx = -step;
+    if (dir === 'right') dx = step;
+
+    moveCharacter(dx, dy);
+    dpadTimerRef.current = setInterval(() => {
+      moveCharacter(dx * 0.85, dy * 0.85);
+    }, 45);
+  };
+
+  const stopDpadMove = () => {
+    setActiveDpadDir(null);
+    if (dpadTimerRef.current) {
+      clearInterval(dpadTimerRef.current);
+      dpadTimerRef.current = null;
+    }
+  };
+
+  // Keyboard Arrow / WASD + Space/Enter handlers
+  useEffect(() => {
+    const activeKeys = new Set();
+    let animFrameId = null;
+
+    const loop = () => {
+      if (activeKeys.size > 0 && sceneRef.current === 'play') {
+        const step = 0.65;
+        let dx = 0;
+        let dy = 0;
+        if (activeKeys.has('ArrowUp') || activeKeys.has('KeyW')) dy -= step;
+        if (activeKeys.has('ArrowDown') || activeKeys.has('KeyS')) dy += step;
+        if (activeKeys.has('ArrowLeft') || activeKeys.has('KeyA')) dx -= step;
+        if (activeKeys.has('ArrowRight') || activeKeys.has('KeyD')) dx += step;
+        if (dx !== 0 || dy !== 0) moveCharacter(dx, dy);
+      }
+      animFrameId = requestAnimationFrame(loop);
+    };
+
+    const onKeyDown = (e) => {
+      const keys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD', 'Space', 'Enter'];
+      if (!keys.includes(e.code)) return;
+      e.preventDefault();
+
+      if (e.code === 'Space' || e.code === 'Enter') {
+        if (sceneRef.current === 'intro') startPlayScene();
+        else if (sceneRef.current === 'play') swingAxe();
+        return;
+      }
+
+      if (sceneRef.current === 'play') {
+        activeKeys.add(e.code);
+      }
+    };
+
+    const onKeyUp = (e) => {
+      activeKeys.delete(e.code);
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    animFrameId = requestAnimationFrame(loop);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
+      if (dpadTimerRef.current) clearInterval(dpadTimerRef.current);
+      if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
+    };
+  }, [moveCharacter, startPlayScene, swingAxe]);
+
+  const resetLevel = () => {
+    setScene('intro');
+    sceneRef.current = 'intro';
+    setCharPos({ x: 22, y: 78 });
+    charPosRef.current = { x: 22, y: 78 };
+    setHasAxe(false);
+    hasAxeRef.current = false;
+    setChopProgress(0);
+    chopProgressRef.current = 0;
+    setWoodChips([]);
+    setShowCutModal(false);
+  };
+
   if (loading) {
     return (
       <div className="w-screen h-screen bg-[#030a08] flex flex-col items-center justify-center text-yellow-400 gap-3 font-sans select-none">
@@ -118,71 +315,65 @@ export default function Level2AlasKapakPage() {
     );
   }
 
+  // Determine current background image
+  let bgSrc = '/assets/level2/screen_alas_kapak.jpg';
+  if (scene === 'play') {
+    bgSrc = hasAxe
+      ? '/assets/level2/screen_alas_tanpa_cewe_kosong.jpg'
+      : '/assets/level2/screen_alas_tanpa_cewe_kapak.jpg';
+  } else if (scene === 'cut') {
+    bgSrc = '/assets/level2/screen_alas_pohon_ditebang.jpg';
+  }
+
+  const nearTree = isNearTree(charPos);
+
   return (
     <div className="relative w-screen h-screen bg-[#020705] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
-
-      {/* ── Keyframe Animations ─────────────────────────────────────────── */}
       <style>{`
         @keyframes roroWalkBob {
-          0%   { transform: translateY(0px)  rotate(0deg)   scale(1,0.98); }
-          25%  { transform: translateY(-8px) rotate(2deg)   scale(0.99,1.02); }
-          50%  { transform: translateY(0px)  rotate(0deg)   scale(1,0.98); }
-          75%  { transform: translateY(-8px) rotate(-2deg)  scale(0.99,1.02); }
-          100% { transform: translateY(0px)  rotate(0deg)   scale(1,0.98); }
+          0%   { transform: translateY(0px) rotate(0deg) scale(1, 0.98); }
+          25%  { transform: translateY(-8px) rotate(2.5deg) scale(0.99, 1.03); }
+          50%  { transform: translateY(0px) rotate(0deg) scale(1, 0.98); }
+          75%  { transform: translateY(-8px) rotate(-2.5deg) scale(0.99, 1.03); }
+          100% { transform: translateY(0px) rotate(0deg) scale(1, 0.98); }
         }
         @keyframes roroIdleBreath {
-          0%,100% { transform: translateY(0px); }
-          50%     { transform: translateY(-3px); }
+          0%, 100% { transform: translateY(0px); }
+          50%      { transform: translateY(-3px); }
         }
-        @keyframes pickupBounce {
-          0%   { transform: scale(1) translateY(0); }
-          30%  { transform: scale(1.18) translateY(-10px); }
-          60%  { transform: scale(0.95) translateY(2px); }
-          100% { transform: scale(1) translateY(0); }
-        }
-        @keyframes kapakFloat {
-          0%,100% { transform: translateY(0px) rotate(-10deg); }
-          50%     { transform: translateY(-6px) rotate(-10deg); }
-        }
-        @keyframes kapakChop {
-          0%,100% { transform: rotate(-35deg) translate(0px,0px); }
-          50%     { transform: rotate(25deg)  translate(8px,12px); }
+        @keyframes kapakSwing {
+          0%   { transform: rotate(-25deg) translate(0, 0); }
+          45%  { transform: rotate(45deg) translate(12px, 14px); }
+          100% { transform: rotate(-25deg) translate(0, 0); }
         }
         @keyframes woodChipFly {
-          0%   { opacity:1; transform: translate(0,0) rotate(0deg); }
-          100% { opacity:0; transform: translate(var(--dx),var(--dy)) rotate(var(--rot)); }
-        }
-        @keyframes sparkle {
-          0%,100% { opacity:0; transform:scale(0.5); }
-          50%     { opacity:1; transform:scale(1.4); }
+          0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
+          100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)); }
         }
         @keyframes fadeIn {
-          from { opacity:0; transform:translateY(10px); }
-          to   { opacity:1; transform:translateY(0); }
+          from { opacity: 0; transform: translateY(8px); }
+          to   { opacity: 1; transform: translateY(0); }
         }
-        .anim-walk    { animation: roroWalkBob   0.5s ease-in-out infinite; }
-        .anim-idle    { animation: roroIdleBreath 2.5s ease-in-out infinite; }
-        .anim-pickup  { animation: pickupBounce  0.6s ease-in-out; }
-        .anim-float   { animation: kapakFloat    1.6s ease-in-out infinite; }
-        .anim-chop    { animation: kapakChop     0.45s ease-in-out infinite; }
-        .anim-fadein  { animation: fadeIn        0.5s ease-out forwards; }
+        .anim-walk { animation: roroWalkBob 0.42s ease-in-out infinite; }
+        .anim-idle { animation: roroIdleBreath 2.4s ease-in-out infinite; }
+        .anim-chop { animation: kapakSwing 0.32s ease-in-out; }
+        .anim-fadein { animation: fadeIn 0.35s ease-out forwards; }
       `}</style>
 
-      {/* ── Container 1024×512 (2:1 Aspect Ratio) ───────────────────────── */}
-      <div
-        className="relative w-full h-full max-w-[calc(100vh*1024/512)] max-h-[calc(100vw*512/1024)] aspect-[1024/512] overflow-hidden shadow-2xl"
-      >
-
-        {/* Background */}
+      {/* Container 1024x512 (2:1 Aspect Ratio) */}
+      <div className="relative w-full h-full max-w-[calc(100vh*1024/512)] max-h-[calc(100vw*512/1024)] aspect-[1024/512] overflow-hidden shadow-2xl">
+        {/* Background Layer */}
         <Image
-          src="/assets/level2/screen_alas_kapak.jpg"
-          alt="Alas Gunung Wilis - Wit Gedhe Ngalangi Dalan"
-          fill priority sizes="100vw"
-          className="object-contain object-center"
+          src={bgSrc}
+          alt="Alas Gunung Wilis"
+          fill
+          priority
+          sizes="100vw"
+          className="object-contain object-center transition-opacity duration-300"
         />
 
-        {/* ── Navigasi ──────────────────────────────────────────────────── */}
-        <div className="absolute top-3 left-4 z-30 flex items-center gap-2">
+        {/* Navigasi Pojok Kiri Atas */}
+        <div className="absolute top-3 left-4 z-35 flex items-center gap-2">
           <Link
             href="/level2/mucuk"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
@@ -197,211 +388,299 @@ export default function Level2AlasKapakPage() {
           </Link>
         </div>
 
-        {/* ── KAPAK DI TANAH (hanya saat intro) ────────────────────────── */}
-        {phase === 'intro' && (
-          <div
-            className="absolute z-20"
-            style={{ left: AXE_ON_GROUND.left, bottom: AXE_ON_GROUND.bottom, transform: 'translateX(-50%)' }}
-          >
-            {/* Sparkle aura di bawah kapak */}
-            <div className="absolute -inset-3 rounded-full bg-yellow-400/20 animate-pulse" />
-            <div
-              className="relative"
-              style={{ width: '7vw', maxWidth: 90, minWidth: 55, aspectRatio: '2.2/1' }}
-            >
-              <Image
-                src="/assets/level2/item-kapak.png"
-                alt="Kapak di lemah"
-                fill sizes="90px"
-                className="object-contain drop-shadow-[0_8px_18px_rgba(0,0,0,0.9)]"
-              />
-            </div>
+        {/* Badge Petunjuk Kontrol */}
+        {scene !== 'cut' && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-35 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/75 shadow-xl backdrop-blur-md">
+            <span className="text-yellow-300 font-bold text-[10px] sm:text-xs flex items-center gap-1.5 whitespace-nowrap">
+              {scene === 'intro' ? (
+                <>👆 Pencet &ldquo;Gunakake kapak&rdquo; kanggo miwiti</>
+              ) : !hasAxe ? (
+                <>🎮 Kontrol: D-Pad / Arrow Keys — Jupuk kapak ing lemah!</>
+              ) : !nearTree ? (
+                <>🚶 Mlaku menyang ngarep wit gedhe nganggo D-Pad / Arrow Keys!</>
+              ) : (
+                <>🪓 Pencet &ldquo;Ayunkan Kapak&rdquo; utawa Spasi kanggo nugel wit!</>
+              )}
+            </span>
           </div>
         )}
 
-        {/* ── TOMBOL "GUNAKAKE KAPAK" (saat intro) ─────────────────────── */}
-        {phase === 'intro' && (
-          <button
-            type="button"
-            onClick={handleStart}
-            className="absolute z-25 flex items-center gap-2 px-4 py-2 rounded-full bg-amber-900/90 hover:bg-amber-800 border-2 border-yellow-400 text-yellow-200 font-black text-xs sm:text-sm shadow-2xl hover:shadow-yellow-500/40 active:scale-95 transition-all anim-fadein"
-            style={{ left: '48%', bottom: '17%', transform: 'translateX(-50%)' }}
-          >
-            <span className="text-base">🪓</span>
-            Gunakake Kapak!
-          </button>
+        {/* ========================================================
+            SCENE 1 ('intro'): HITBOX KAPAK & TOMBOL "GUNAKAKE KAPAK"
+           ======================================================== */}
+        {scene === 'intro' && (
+          <>
+            <div
+              onClick={startPlayScene}
+              className="absolute left-[37.5%] top-[70.5%] w-[14.5%] h-[16.5%] rounded-2xl z-25 cursor-pointer hover:ring-2 hover:ring-yellow-300 hover:bg-yellow-400/20 active:scale-95 transition-all animate-pulse"
+              title="Pencet kanggo miwiti"
+            />
+            <button
+              type="button"
+              onClick={startPlayScene}
+              className="absolute left-[52.0%] top-[72.0%] w-[16.8%] h-[9.5%] rounded-full bg-transparent hover:bg-yellow-400/25 hover:ring-2 hover:ring-yellow-300 hover:shadow-[0_0_20px_rgba(250,204,21,0.6)] active:scale-95 transition-all cursor-pointer z-25"
+              title="Gunakake kapak"
+            >
+              <span className="sr-only">Gunakake kapak</span>
+            </button>
+          </>
         )}
 
-        {/* ── KARAKTER: RARA RUNTING (kiri / depan) ────────────────────── */}
-        <div
-          className="absolute z-20 flex flex-col items-center transition-all ease-in-out"
-          style={{
-            left: charPos.left,
-            bottom: charPos.bottom,
-            transitionDuration: isWalking ? '2.4s' : '0s',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div
-            className={
-              isWalking   ? 'anim-walk'   :
-              phase === 'pickup' ? 'anim-pickup' :
-              'anim-idle'
-            }
-          >
-            <div
-              style={{ width: '7vw', maxWidth: 80, minWidth: 46, aspectRatio: '130/315' }}
-              className="relative"
-            >
-              <Image
-                src="/assets/level2/karakter-rara-runting-tengok.png"
-                alt="Rara Runting"
-                fill sizes="80px"
-                className="object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.75)]"
-              />
-            </div>
-          </div>
-        </div>
+        {/* ========================================================
+            SCENE 2 ('play'): BAR TEBANG POHON & ZONA DEPAN POHON
+           ======================================================== */}
+        {scene === 'play' && (
+          <>
+            {/* Indikator zona ambil kapak jika belum punya kapak */}
+            {!hasAxe && (
+              <div
+                className="absolute left-[44.5%] top-[69%] -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center"
+              >
+                <div className="px-2.5 py-0.5 rounded-full bg-stone-950/90 border border-yellow-400 text-yellow-300 text-[9px] sm:text-[10px] font-bold shadow-lg animate-bounce whitespace-nowrap">
+                  ⬇ Jupuk Kapak
+                </div>
+              </div>
+            )}
 
-        {/* ── KARAKTER: RARA KUNING (kanan / belakang) ─────────────────── */}
-        <div
-          className="absolute z-19 flex flex-col items-center transition-all ease-in-out"
-          style={{
-            left: `calc(${charPos.left} + 5%)`,
-            bottom: charPos.bottom,
-            transitionDuration: isWalking ? '2.4s' : '0s',
-            transform: 'translateX(-50%)',
-          }}
-        >
-          <div
-            className={
-              isWalking   ? 'anim-walk'   :
-              phase === 'pickup' ? 'anim-pickup' :
-              'anim-idle'
-            }
-            style={{ animationDelay: '0.12s' }}
-          >
-            <div
-              style={{ width: '8vw', maxWidth: 90, minWidth: 52, aspectRatio: '241/331' }}
-              className="relative"
-            >
-              <Image
-                src="/assets/level2/karakter-rara-kuning-tunjuk.png"
-                alt="Rara Kuning"
-                fill sizes="90px"
-                className="object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.75)]"
-              />
-            </div>
-          </div>
-        </div>
+            {/* Bar Tebang Pohon di dekat pohon */}
+            <div className="absolute left-[58%] top-[34%] -translate-x-1/2 z-25 flex flex-col items-center gap-1 pointer-events-none">
+              <div className="bg-stone-950/90 border border-yellow-500/80 rounded-xl px-3 py-1.5 shadow-2xl backdrop-blur-md min-w-[150px] sm:min-w-[190px]">
+                <div className="flex items-center justify-between text-[9px] sm:text-[11px] font-bold text-yellow-300 mb-1">
+                  <span>🪵 Ketahanan Wit</span>
+                  <span>{chopProgress}%</span>
+                </div>
+                <div className="w-full h-2.5 bg-stone-800 rounded-full overflow-hidden border border-stone-700">
+                  <div
+                    className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-300"
+                    style={{ width: `${chopProgress}%` }}
+                  />
+                </div>
+              </div>
 
-        {/* ── KAPAK MELAYANG DI TANGAN (setelah pickup) ────────────────── */}
-        {hasAxe && (
-          <div
-            className="absolute z-25 transition-all ease-in-out pointer-events-none"
-            style={{
-              left: `calc(${charPos.left} + 2%)`,
-              bottom: `calc(${charPos.bottom} + 10%)`,
-              transitionDuration: isWalking ? '2.4s' : '0s',
-              transform: 'translateX(-50%)',
-            }}
-          >
+              {hasAxe && !nearTree && (
+                <div className="px-2.5 py-0.5 rounded-full bg-amber-950/90 border border-yellow-400/70 text-yellow-200 text-[9px] sm:text-[10px] font-bold animate-pulse whitespace-nowrap">
+                  ⬇ Cedhaki wit iki!
+                </div>
+              )}
+            </div>
+
+            {/* Highlight zona depan pohon saat sudah pegang kapak */}
+            {hasAxe && (
+              <div
+                className={`absolute left-[42%] top-[48%] w-[32%] h-[24%] rounded-3xl z-15 pointer-events-none transition-all duration-300 ${
+                  nearTree
+                    ? 'border-2 border-emerald-400/80 bg-emerald-400/10 shadow-[0_0_25px_rgba(52,211,153,0.3)]'
+                    : 'border border-dashed border-yellow-400/40 bg-yellow-400/5'
+                }`}
+              />
+            )}
+
+            {/* Partikel tatal kayu saat kapak diayunkan */}
+            {woodChips.map((chip) => (
+              <div
+                key={chip.id}
+                className="absolute z-30 w-2.5 h-1.5 rounded-sm bg-amber-600 border border-amber-900 pointer-events-none"
+                style={{
+                  left: `${charPos.x + (facingLeft ? -4 : 5)}%`,
+                  top: `${charPos.y - 14}%`,
+                  '--dx': `${chip.dx}px`,
+                  '--dy': `${chip.dy}px`,
+                  '--rot': `${chip.rot}deg`,
+                  animation: 'woodChipFly 0.8s ease-out forwards',
+                }}
+              />
+            ))}
+
+            {/* KARAKTER DINAMIS (RARA KUNING & RARA RUNTING) */}
             <div
-              className={isChopping ? 'anim-chop' : 'anim-float'}
-              style={{ transformOrigin: 'bottom left' }}
+              className="absolute z-20 pointer-events-none"
+              style={{
+                left: `${charPos.x}%`,
+                top: `${charPos.y}%`,
+                transform: 'translate(-50%, -100%)',
+              }}
             >
               <div
-                style={{ width: '5vw', maxWidth: 68, minWidth: 38, aspectRatio: '2.2/1' }}
-                className="relative"
+                className="relative flex items-end"
+                style={{
+                  transform: facingLeft ? 'scaleX(-1)' : 'scaleX(1)',
+                  transition: 'transform 0.15s ease',
+                }}
               >
-                <Image
-                  src="/assets/level2/item-kapak.png"
-                  alt="Kapak dicekel"
-                  fill sizes="68px"
-                  className="object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.8)]"
-                />
+                {/* Rara Kuning */}
+                <div className={isWalking ? 'anim-walk' : 'anim-idle'}>
+                  <div
+                    className="relative"
+                    style={{ width: '7.5vw', maxWidth: 88, minWidth: 46, aspectRatio: '241/331' }}
+                  >
+                    <Image
+                      src="/assets/level2/karakter-rara-kuning-tali.png"
+                      alt="Putri Rara Kuning"
+                      fill
+                      sizes="88px"
+                      className="object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.8)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Rara Runting */}
+                <div
+                  className={`-ml-3 ${isWalking ? 'anim-walk' : 'anim-idle'}`}
+                  style={{ animationDelay: '0.15s' }}
+                >
+                  <div
+                    className="relative"
+                    style={{ width: '6.2vw', maxWidth: 74, minWidth: 40, aspectRatio: '130/315' }}
+                  >
+                    <Image
+                      src="/assets/level2/karakter-rara-runting-tali.png"
+                      alt="Putri Rara Runting"
+                      fill
+                      sizes="74px"
+                      className="object-contain drop-shadow-[0_6px_12px_rgba(0,0,0,0.8)]"
+                    />
+                  </div>
+                </div>
+
+                {/* Kapak di tangan karakter saat sudah diambil */}
+                {hasAxe && (
+                  <div
+                    className={`absolute -right-5 top-[30%] z-25 ${isChopping ? 'anim-chop' : ''}`}
+                    style={{ transformOrigin: 'bottom left' }}
+                  >
+                    <div
+                      className="relative"
+                      style={{ width: '4.5vw', maxWidth: 56, minWidth: 32, aspectRatio: '2.2/1' }}
+                    >
+                      <Image
+                        src="/assets/level2/item-kapak.png"
+                        alt="Kapak Wesi"
+                        fill
+                        sizes="56px"
+                        className="object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+
+            {/* Tombol Ayunkan Kapak (muncul ketika pegang kapak) */}
+            {hasAxe && (
+              <button
+                type="button"
+                onClick={swingAxe}
+                className={`absolute right-[4%] bottom-[8%] z-35 flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 font-black text-xs sm:text-sm shadow-2xl transition-all active:scale-90 cursor-pointer ${
+                  nearTree
+                    ? 'bg-gradient-to-r from-amber-500 to-yellow-400 border-yellow-200 text-stone-950 animate-pulse hover:scale-105'
+                    : 'bg-stone-900/85 border-stone-600 text-stone-400 hover:bg-stone-800'
+                }`}
+              >
+                <span className="text-lg">🪓</span>
+                <span>{nearTree ? 'Ayunkan Kapak! (Spasi)' : 'Cedhaki Wit Dhisik'}</span>
+              </button>
+            )}
+          </>
+        )}
+
+        {/* ========================================================
+            D-PAD EMULATOR (POJOK KIRI BAWAH — AKTIF DI INTRO & PLAY)
+           ======================================================== */}
+        {scene !== 'cut' && (
+          <div className="pointer-events-auto select-none">
+            {/* Atas (▲) */}
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); startDpadMove('up'); }}
+              onPointerUp={stopDpadMove}
+              onPointerLeave={stopDpadMove}
+              onTouchStart={(e) => { e.preventDefault(); startDpadMove('up'); }}
+              onTouchEnd={stopDpadMove}
+              onTouchCancel={stopDpadMove}
+              title="Mlaku Mendhuwur (▲)"
+              className={`absolute left-[5.4%] top-[78.1%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
+                activeDpadDir === 'up'
+                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
+                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
+              }`}
+            >
+              <span className="sr-only">Panah Dhuwur</span>
+            </button>
+
+            {/* Kiwa (◀) */}
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); startDpadMove('left'); }}
+              onPointerUp={stopDpadMove}
+              onPointerLeave={stopDpadMove}
+              onTouchStart={(e) => { e.preventDefault(); startDpadMove('left'); }}
+              onTouchEnd={stopDpadMove}
+              onTouchCancel={stopDpadMove}
+              title="Mlaku Ngiwa (◀)"
+              className={`absolute left-[0.9%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
+                activeDpadDir === 'left'
+                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
+                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
+              }`}
+            >
+              <span className="sr-only">Panah Kiwa</span>
+            </button>
+
+            {/* Ngisor (▼) */}
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); startDpadMove('down'); }}
+              onPointerUp={stopDpadMove}
+              onPointerLeave={stopDpadMove}
+              onTouchStart={(e) => { e.preventDefault(); startDpadMove('down'); }}
+              onTouchEnd={stopDpadMove}
+              onTouchCancel={stopDpadMove}
+              title="Mlaku Mengisor (▼)"
+              className={`absolute left-[5.4%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
+                activeDpadDir === 'down'
+                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
+                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
+              }`}
+            >
+              <span className="sr-only">Panah Ngisor</span>
+            </button>
+
+            {/* Tengen (▶) */}
+            <button
+              type="button"
+              onPointerDown={(e) => { e.preventDefault(); startDpadMove('right'); }}
+              onPointerUp={stopDpadMove}
+              onPointerLeave={stopDpadMove}
+              onTouchStart={(e) => { e.preventDefault(); startDpadMove('right'); }}
+              onTouchEnd={stopDpadMove}
+              onTouchCancel={stopDpadMove}
+              title="Mlaku Nengen (▶)"
+              className={`absolute left-[9.8%] top-[87.5%] w-[4.1%] h-[8.4%] rounded-lg z-35 transition-all cursor-pointer ${
+                activeDpadDir === 'right'
+                  ? 'bg-yellow-400/45 ring-2 ring-yellow-300 scale-90 shadow-[0_0_15px_rgba(250,204,21,0.8)]'
+                  : 'hover:bg-yellow-400/20 active:scale-90 hover:ring-1 hover:ring-yellow-400/60'
+              }`}
+            >
+              <span className="sr-only">Panah Tengen</span>
+            </button>
           </div>
         )}
 
-        {/* ── TATAL KAYU (woodchip particles) ─────────────────────────── */}
-        {woodChips.map(chip => (
-          <div
-            key={chip.id}
-            className="absolute z-30 w-3 h-2 rounded-sm bg-amber-700 pointer-events-none"
-            style={{
-              left: `calc(${CHAR_POS.atTree.left} + 8%)`,
-              bottom: `calc(${CHAR_POS.atTree.bottom} + 8%)`,
-              '--dx': `${chip.dx}px`,
-              '--dy': `${chip.dy}px`,
-              '--rot': `${chip.rot}deg`,
-              animation: `woodChipFly 1.0s ease-out ${chip.delay}s forwards`,
-            }}
-          />
-        ))}
-
-        {/* ── SPEECH BUBBLE (intro & walking_to_axe) ───────────────────── */}
-        {(phase === 'intro' || phase === 'walking_to_axe') && (
-          <div className="absolute top-[8%] left-[4%] z-30 flex gap-3 anim-fadein">
-            {/* Rara Kuning */}
-            <div className="bg-amber-950/90 border border-yellow-400/80 rounded-xl px-3 py-2 text-[9px] sm:text-xs text-yellow-100 font-semibold shadow-xl max-w-[18ch] leading-relaxed">
-              <span className="block text-yellow-400 font-black text-[8px] mb-0.5">Putri Rara Kuning</span>
-              Dhuh..ana wit gedhe sing ngalangi dalan. Kepriye iki dhik?
-            </div>
-            {/* Rara Runting */}
-            <div className="bg-stone-900/90 border border-emerald-400/70 rounded-xl px-3 py-2 text-[9px] sm:text-xs text-stone-100 font-semibold shadow-xl max-w-[20ch] leading-relaxed">
-              <span className="block text-emerald-400 font-black text-[8px] mb-0.5">Putri Rara Runting</span>
-              Tenang Mbakyu, iku ana kapak. Ayo nagunakake kapak iki kanggo nugel wit iki, supaya bisa liwat.
-            </div>
-          </div>
-        )}
-
-        {/* ── SPEECH BUBBLE (pickup) ───────────────────────────────────── */}
-        {phase === 'pickup' && (
-          <div className="absolute top-[8%] left-[4%] z-30 anim-fadein">
-            <div className="bg-emerald-950/90 border border-emerald-400/80 rounded-xl px-3 py-2 text-[9px] sm:text-xs text-emerald-100 font-semibold shadow-xl max-w-[24ch] leading-relaxed">
-              <span className="block text-emerald-300 font-black text-[8px] mb-0.5">✨ Kapak kasil dijupuk!</span>
-              Saiki ayo nugel wit sing ngalangi dalan!
-            </div>
-          </div>
-        )}
-
-        {/* ── SPEECH BUBBLE (walking_to_tree / chopping) ───────────────── */}
-        {(phase === 'walking_to_tree' || phase === 'chopping') && (
-          <div className="absolute top-[8%] left-[4%] z-30 anim-fadein">
-            <div className="bg-amber-950/90 border border-yellow-400/80 rounded-xl px-3 py-2 text-[9px] sm:text-xs text-yellow-100 font-semibold shadow-xl max-w-[22ch] leading-relaxed">
-              <span className="block text-yellow-400 font-black text-[8px] mb-0.5">
-                {phase === 'chopping' ? '🪓 Nugel wit...' : 'Ayo menyang wit!'}
-              </span>
-              {phase === 'chopping'
-                ? 'Dheg! Dheg! Dheg! Kapak ngethok wit gedhe karo sekuat tenaga!'
-                : 'Ayo Mbakyu, nugel wit karo kapak iki!'}
-            </div>
-          </div>
-        )}
-
-        {/* ── MODAL SELESAI ─────────────────────────────────────────────── */}
-        {isDone && (
-          <div className="absolute inset-0 z-40 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 anim-fadein">
+        {/* ========================================================
+            SCENE 3 ('cut'): MODAL SELESAI SETELAH POHON DITEBANG
+           ======================================================== */}
+        {scene === 'cut' && showCutModal && (
+          <div className="absolute inset-0 z-40 bg-stone-950/70 backdrop-blur-[2px] flex items-center justify-center p-4 anim-fadein">
             <div className="max-w-sm w-full bg-gradient-to-b from-stone-900 to-stone-950 border-2 border-yellow-500/90 rounded-2xl p-6 shadow-2xl text-center space-y-4">
-
-              {/* Icon */}
               <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-4xl shadow-lg">
                 🌲
               </div>
-
-              {/* Judul */}
               <h3 className="text-xl font-serif font-black text-yellow-400">
-                Wit Kasil Ditugel! 🎉
+                Wit Gedhe Kasil Ditugel!
               </h3>
-
-              {/* Deskripsi */}
               <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-                Mantap! Dalan tumuju Gunung Wilis wis tinarbuka. Putri Rara Kuning lan Rara Runting saiki bisa nerusake lelampahan golek usada!
+                Dalan tumuju Gunung Wilis wis tinarbuka. Putri Rara Kuning lan Rara Runting saiki bisa nerusake lelampahan golek usada!
               </p>
-
-              {/* Tombol aksi */}
               <div className="pt-2 flex flex-col gap-2.5">
                 <Link
                   href="/level2/kali"
@@ -411,8 +690,8 @@ export default function Level2AlasKapakPage() {
                 </Link>
                 <button
                   type="button"
-                  onClick={() => { goPhase('intro'); setWoodChips([]); }}
-                  className="w-full px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold transition"
+                  onClick={resetLevel}
+                  className="w-full px-4 py-2 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold transition cursor-pointer"
                 >
                   Muter Maneh 🔄
                 </button>
@@ -420,8 +699,27 @@ export default function Level2AlasKapakPage() {
             </div>
           </div>
         )}
+      </div>
 
-      </div>{/* end container */}
+      {/* Toast Feedback */}
+      {toast && (
+        <div
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-2.5 rounded-2xl border shadow-2xl backdrop-blur-md flex items-center justify-between gap-3 text-xs sm:text-sm font-bold tracking-wide anim-fadein ${
+            toast.type === 'success'
+              ? 'bg-emerald-950/95 border-emerald-400 text-emerald-200'
+              : 'bg-stone-900/95 border-yellow-400 text-yellow-300'
+          }`}
+        >
+          <span>{toast.text}</span>
+          <button
+            type="button"
+            onClick={() => setToast(null)}
+            className="text-stone-300 hover:text-white cursor-pointer"
+          >
+            ✕
+          </button>
+        </div>
+      )}
     </div>
   );
 }
