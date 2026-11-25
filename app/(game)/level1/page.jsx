@@ -15,25 +15,12 @@ export default function Level1OrientasiTokohPage() {
   const [currentUser, setCurrentUser] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
 
-  // Mode Tampilan: 'uraian' (Tantangan Nulis 4 Tokoh) atau 'centhang' (Tantangan Checkbox Karakter)
-  const [activeView, setActiveView] = useState('uraian');
+  // ALUR LEVEL 1: 'centhang' (Tahap 1: Centhang Ciri Dulu) -> 'uraian' (Tahap 2: Tantangan Nulis)
+  const [activeView, setActiveView] = useState('centhang');
   const [activeCharIndex, setActiveCharIndex] = useState(0);
 
   // ==========================================================
-  // STATE TANTANGAN 1: URUSAN TULISAN / TEXTBOX 4 TOKOH
-  // ==========================================================
-  const [essayAnswers, setEssayAnswers] = useState({
-    tokoh1: '',
-    tokoh2: '',
-    tokoh3: '',
-    tokoh4: '',
-  });
-  const [isSavingEssay, setIsSavingEssay] = useState(false);
-  const [essayToast, setEssayToast] = useState(null);
-  const [hasSavedEssayBefore, setHasSavedEssayBefore] = useState(false);
-
-  // ==========================================================
-  // STATE TANTANGAN 2: CENTHANG KARAKTER (CHECKLIST)
+  // STATE TANTANGAN 1: CENTHANG KARAKTER (CHECKLIST)
   // ==========================================================
   const [selectedAnswers, setSelectedAnswers] = useState({
     rara_kuning: [],
@@ -55,6 +42,20 @@ export default function Level1OrientasiTokohPage() {
   });
   const [feedbackMsg, setFeedbackMsg] = useState(null);
   const [isSavingChecklist, setIsSavingChecklist] = useState(false);
+  const [showTransitionToEssayModal, setShowTransitionToEssayModal] = useState(false);
+
+  // ==========================================================
+  // STATE TANTANGAN 2: TANTANGAN NULIS (URAIAN 4 TOKOH)
+  // ==========================================================
+  const [essayAnswers, setEssayAnswers] = useState({
+    tokoh1: '',
+    tokoh2: '',
+    tokoh3: '',
+    tokoh4: '',
+  });
+  const [isSavingEssay, setIsSavingEssay] = useState(false);
+  const [essayToast, setEssayToast] = useState(null);
+  const [hasSavedEssayBefore, setHasSavedEssayBefore] = useState(false);
 
   // Modal dialogs
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -62,6 +63,13 @@ export default function Level1OrientasiTokohPage() {
   const [showUnlockLevel2Modal, setShowUnlockLevel2Modal] = useState(false);
 
   const currentChar = charactersLevel1[activeCharIndex];
+  const completedCharsCount = Object.values(submittedState).filter(Boolean).length;
+  const isAllEssayFilled = Boolean(
+    essayAnswers.tokoh1?.trim() &&
+    essayAnswers.tokoh2?.trim() &&
+    essayAnswers.tokoh3?.trim() &&
+    essayAnswers.tokoh4?.trim()
+  );
 
   // ==========================================================
   // 1. LOAD USER DATA, ESSAY ANSWERS & CHECKLIST RESULTS
@@ -88,23 +96,6 @@ export default function Level1OrientasiTokohPage() {
 
       if (profile) {
         setStudentProfile(profile);
-      }
-
-      // Load Existing Essay Answers
-      const { data: essayData } = await supabase
-        .from('level1_essay_answers')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
-
-      if (essayData) {
-        setEssayAnswers({
-          tokoh1: essayData.tokoh1_answer || '',
-          tokoh2: essayData.tokoh2_answer || '',
-          tokoh3: essayData.tokoh3_answer || '',
-          tokoh4: essayData.tokoh4_answer || '',
-        });
-        setHasSavedEssayBefore(true);
       }
 
       // Load Existing Checklist Results
@@ -136,13 +127,30 @@ export default function Level1OrientasiTokohPage() {
         setSubmittedState(newSubmitted);
         setScores(newScores);
       }
+
+      // Load Existing Essay Answers
+      const { data: essayData } = await supabase
+        .from('level1_essay_answers')
+        .select('*')
+        .eq('user_id', user.id)
+        .maybeSingle();
+
+      if (essayData) {
+        setEssayAnswers({
+          tokoh1: essayData.tokoh1_answer || '',
+          tokoh2: essayData.tokoh2_answer || '',
+          tokoh3: essayData.tokoh3_answer || '',
+          tokoh4: essayData.tokoh4_answer || '',
+        });
+        setHasSavedEssayBefore(true);
+      }
     }
 
     loadData();
   }, [router, supabase]);
 
   // ==========================================================
-  // 2. HANDLER: SIMPAN JAWABAN URUSAN (TEXTBOX) KE SUPABASE
+  // 2. HANDLER: SIMPAN JAWABAN TANTANGAN NULIS KE SUPABASE
   // ==========================================================
   const handleSaveEssay = async () => {
     if (!currentUser) return;
@@ -216,7 +224,7 @@ export default function Level1OrientasiTokohPage() {
   };
 
   // ==========================================================
-  // 3. HANDLERS: CHECKLIST CAROUSEL
+  // 3. HANDLERS: CENTHANG CIRI TOKOH (CAROUSEL)
   // ==========================================================
   const handlePrevChar = useCallback(() => {
     setActiveCharIndex((prev) => (prev - 1 + charactersLevel1.length) % charactersLevel1.length);
@@ -285,7 +293,8 @@ export default function Level1OrientasiTokohPage() {
     const targetCount = Math.min(3, currentChar.correctIndices.length);
 
     setScores((prev) => ({ ...prev, [charId]: correctCount }));
-    setSubmittedState((prev) => ({ ...prev, [charId]: true }));
+    const newSubmitted = { ...submittedState, [charId]: true };
+    setSubmittedState(newSubmitted);
 
     if (correctCount === targetCount) {
       setFeedbackMsg(`🎉 Sampurna! Kabeh ${correctCount} pilihanmu bener!`);
@@ -293,6 +302,14 @@ export default function Level1OrientasiTokohPage() {
       setFeedbackMsg(`👍 Apik! Ana ${correctCount} pilihan sing bener.`);
     } else {
       setFeedbackMsg('❌ Durung bener. Gatekna maneh katrangan busana ing sisih kiwa!');
+    }
+
+    // Cek apakah semua 4 tokoh sudah dicek jawabannya
+    const allCount = Object.values(newSubmitted).filter(Boolean).length;
+    if (allCount === charactersLevel1.length) {
+      setTimeout(() => {
+        setShowTransitionToEssayModal(true);
+      }, 1200);
     }
 
     if (studentProfile) {
@@ -337,12 +354,212 @@ export default function Level1OrientasiTokohPage() {
     <div className="relative w-screen h-screen bg-[#04120a] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
       {/* 
         CONTAINER UTAMA 16:9 (1024 x 576)
-        Menjamin 100% presisi posisi textarea dan tombol di layar apa pun
+        Menjamin 100% presisi posisi checkbox, textarea, dan tombol di layar apa pun
       */}
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
         
         {/* ========================================================
-            TAMPILAN 1: TANTANGAN NULIS URUSAN 4 TOKOH (OVERVIEW)
+            TAHAP 1: CENTHANG CIRI-CIRI TOKOH (CAROUSEL)
+            DITAMPILKAN PERTAMA KALI KETIKA MEMBUKA LEVEL 1
+           ======================================================== */}
+        {activeView === 'centhang' && (
+          <>
+            {/* Background Slide Artwork Sesuai Tokoh yang Aktif */}
+            <Image
+              src={currentChar.image}
+              alt={`Tantangan ${currentChar.name}`}
+              fill
+              priority
+              sizes="100vw"
+              className="object-contain object-center transition-all duration-300"
+            />
+
+            {/* Top Navbar */}
+            <Link
+              href="/beranda"
+              title="Bali menyang Beranda"
+              className="absolute left-[28.5%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
+            />
+            <Link
+              href="/cptp"
+              title="Capaian lan Tujuan Pasinaon"
+              className="absolute left-[39%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
+            />
+            <Link
+              href="/peta"
+              title="Peta Petualangan"
+              className="absolute left-[45%] top-[2%] w-[6%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
+            />
+
+            {/* Top Right Icons: Cerita (Buku), Panduan (?), Audio (Speaker) */}
+            <button
+              type="button"
+              onClick={() => setShowStoryModal(true)}
+              title="Waca Ringkesan Crita"
+              className="absolute left-[83.8%] top-[1.8%] w-[4.0%] h-[5.5%] rounded-full bg-transparent hover:bg-yellow-400/20 cursor-pointer z-30"
+            />
+            <button
+              type="button"
+              onClick={() => setShowHelpModal(true)}
+              title="Pituduh Pasinaon"
+              className="absolute left-[88.8%] top-[1.8%] w-[4.0%] h-[5.5%] rounded-full bg-transparent hover:bg-yellow-400/20 cursor-pointer z-30"
+            />
+            <button
+              type="button"
+              onClick={() => setAudioPlaying((p) => !p)}
+              title={audioPlaying ? 'Pateni Swara' : 'Uripake Swara'}
+              className="absolute left-[93.5%] top-[1.8%] w-[4%] h-[5.5%] rounded-full bg-transparent hover:bg-yellow-400/20 cursor-pointer z-30 flex items-center justify-center"
+            >
+              {audioPlaying && (
+                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping opacity-75" />
+              )}
+            </button>
+
+            {/* Status Badge: Langkah 1 - Centhang Ciri */}
+            <div className="absolute top-2.5 left-4 z-35 hidden sm:flex items-center gap-2 px-3.5 py-1 rounded-full bg-stone-950/90 border border-yellow-400/70 shadow-lg backdrop-blur-md">
+              <span className="text-yellow-400 font-bold text-xs">
+                Langkah 1: Centhang Ciri Tokoh
+              </span>
+              <span className="text-stone-400 text-xs">|</span>
+              <span className="text-stone-200 text-xs font-medium">
+                {activeCharIndex + 1}/4 ({currentChar.name})
+              </span>
+              <span className="text-emerald-400 font-bold text-[10px]">
+                [{completedCharsCount}/4 rampung]
+              </span>
+            </div>
+
+            {/* Tombol Eksak "Lanjut menyang Tantangan Nulis" di Pojok Kanan Atas */}
+            <button
+              type="button"
+              onClick={() => setActiveView('uraian')}
+              title="Lanjut menyang Tantangan Nulis 4 Tokoh"
+              className="group absolute left-[86.5%] top-[10.5%] w-[10.5%] h-[7.0%] rounded-full bg-transparent hover:bg-yellow-400/25 hover:ring-2 hover:ring-yellow-400/80 active:scale-95 transition-all cursor-pointer z-30 flex items-center justify-center"
+            >
+              <span className="sr-only">Lanjut menyang Tantangan Nulis</span>
+              {/* Tooltip Hover yang Jelas */}
+              <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none -mt-14 px-3 py-1 bg-stone-950/95 border border-yellow-400 rounded-full text-yellow-300 text-[10px] sm:text-xs font-bold tracking-wide shadow-2xl whitespace-nowrap">
+                📝 Lanjut menyang Tantangan Nulis →
+              </div>
+            </button>
+
+            {/* Slider Controls: Previous (<) & Next (>) */}
+            <button
+              type="button"
+              onClick={handlePrevChar}
+              title="Tokoh Sadurunge (Panah Kiwa)"
+              className="absolute left-[9.3%] top-[45.5%] w-[3.5%] h-[6.5%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/60 active:scale-90 transition-all cursor-pointer z-30"
+            />
+            <button
+              type="button"
+              onClick={handleNextChar}
+              title="Tokoh Sabanjure (Panah Tengen)"
+              className="absolute left-[23.6%] top-[45.5%] w-[3.5%] h-[6.5%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/60 active:scale-90 transition-all cursor-pointer z-30"
+            />
+
+            {/* Checkbox Rows (5 Opsi Ciri-ciri) */}
+            {currentChar.options.map((optionText, idx) => {
+              const isChecked = currentSelected.includes(idx);
+              const isCorrect = currentChar.correctIndices.includes(idx);
+              const rowPos = rowPositions[idx] || rowPositions[0];
+
+              return (
+                <div
+                  key={idx}
+                  onClick={() => handleToggleOption(idx)}
+                  className="absolute left-[70.2%] w-[24.2%] z-20 cursor-pointer group flex items-center select-none"
+                  style={{ top: rowPos.top, height: rowPos.height }}
+                >
+                  <div className="absolute left-[1.1%] w-[9.5%] aspect-square rounded-md flex items-center justify-center transition-all group-hover:ring-1 group-hover:ring-yellow-400/60">
+                    {isChecked && !isSubmitted && (
+                      <span className="text-yellow-400 text-lg sm:text-2xl font-black drop-shadow">
+                        ✓
+                      </span>
+                    )}
+                    {isSubmitted && isChecked && isCorrect && (
+                      <span className="text-emerald-400 text-lg sm:text-2xl font-black drop-shadow animate-bounce">
+                        ✓
+                      </span>
+                    )}
+                    {isSubmitted && isChecked && !isCorrect && (
+                      <span className="text-red-500 text-lg sm:text-2xl font-black drop-shadow">
+                        ✗
+                      </span>
+                    )}
+                  </div>
+                  {isSubmitted && isChecked && (
+                    <div
+                      className={`ml-auto mr-2 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
+                        isCorrect
+                          ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/60'
+                          : 'bg-red-950/90 text-red-300 border border-red-500/60'
+                      }`}
+                    >
+                      {isCorrect ? '✓ Bener' : '✗ Salah'}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            {/* Tombol Priksa Jawaban */}
+            <button
+              type="button"
+              onClick={handleCheckAnswers}
+              disabled={isSavingChecklist}
+              title="Priksa Jawaban Ciri-ciri Tokoh"
+              className="absolute left-[75.0%] top-[69.0%] w-[15.8%] h-[6.5%] rounded-xl bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/80 active:scale-95 transition-all cursor-pointer z-30 flex items-center justify-center"
+            >
+              {isSavingChecklist && (
+                <span className="text-amber-950 font-black text-[10px] bg-yellow-300 px-2 py-0.5 rounded-full animate-pulse">
+                  Mriksa...
+                </span>
+              )}
+            </button>
+
+            {/* Bottom Character Thumbnail Tabs */}
+            <div className="absolute left-[15.5%] top-[82.0%] w-[69.5%] h-[15.5%] z-20 flex items-center justify-between">
+              {charactersLevel1.map((char, idx) => {
+                const charDone = submittedState[char.id];
+                return (
+                  <div
+                    key={char.id}
+                    onClick={() => {
+                      setActiveCharIndex(idx);
+                      setFeedbackMsg(null);
+                    }}
+                    title={`Pilih ${char.name} ${charDone ? '(Wis dipriksa)' : ''}`}
+                    className={`relative w-[23.5%] h-full rounded-2xl cursor-pointer hover:bg-yellow-400/10 hover:ring-1 hover:ring-yellow-300/50 transition-all ${
+                      idx === activeCharIndex ? 'ring-2 ring-yellow-400/80' : ''
+                    }`}
+                  >
+                    {charDone && (
+                      <span className="absolute top-1 right-2 text-emerald-400 text-xs font-black drop-shadow">
+                        ✓
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Tombol Melayang Lanjut menyang Tantangan Nulis */}
+            <div className="absolute bottom-2.5 right-4 z-30">
+              <button
+                type="button"
+                onClick={() => setActiveView('uraian')}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-gradient-to-r from-amber-500 to-yellow-500 hover:from-amber-400 hover:to-yellow-400 text-stone-950 font-black text-xs shadow-xl active:scale-95 transition-all animate-pulse"
+              >
+                <span>📝</span>
+                <span>Lanjut menyang Tantangan Nulis →</span>
+              </button>
+            </div>
+          </>
+        )}
+
+        {/* ========================================================
+            TAHAP 2: TANTANGAN NULIS URUSAN 4 TOKOH (TEXTBOX)
+            DITAMPILKAN SETELAH CENTHANG CIRI
            ======================================================== */}
         {activeView === 'uraian' && (
           <>
@@ -356,23 +573,31 @@ export default function Level1OrientasiTokohPage() {
               className="object-contain object-center"
             />
 
-            {/* ----------------------------------------------------
-                TOP NAVBAR HITBOXES
-               ---------------------------------------------------- */}
-            {/* Logo -> Beranda Utama */}
+            {/* Top Navbar Hitbox: Logo -> Beranda */}
             <Link
               href="/"
               title="Legenda Rara Kuning"
               className="absolute left-[2.5%] top-[1.5%] w-[18%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
             />
 
-            {/* Progress Dots: Dot 1 (Aktif Uraian), Dot 2..5 (Buka Centhang Tokoh) */}
+            {/* Status Badge: Langkah 2 - Tantangan Nulis */}
+            <div className="absolute top-2.5 left-4 z-35 hidden sm:flex items-center gap-2 px-3.5 py-1 rounded-full bg-stone-950/90 border border-amber-400/70 shadow-lg backdrop-blur-md">
+              <span className="text-amber-300 font-bold text-xs">
+                Langkah 2: Tantangan Nulis 4 Tokoh
+              </span>
+              <span className="text-stone-400 text-xs">|</span>
+              <span className="text-stone-300 text-xs font-medium">
+                Tulisna jeneng & watek paraga ing kothak
+              </span>
+            </div>
+
+            {/* Progress Dots: Dot 1 (Centhang Ciri), Dot 2..5 (Pilihan Tokoh) */}
             <div className="absolute left-[60.2%] top-[3.2%] w-[14.5%] h-[4.5%] z-30 flex items-center justify-between">
               <button
                 type="button"
-                onClick={() => setActiveView('uraian')}
-                title="Tantangan Nulis 4 Tokoh (Aktif)"
-                className="w-4 h-4 rounded-full bg-yellow-400 ring-2 ring-yellow-200 shadow-[0_0_10px_rgba(250,204,21,0.8)] cursor-pointer"
+                onClick={() => setActiveView('centhang')}
+                title="Bali menyang Centhang Ciri Tokoh"
+                className="w-3.5 h-3.5 rounded-full bg-stone-900/80 border border-yellow-400/60 hover:bg-yellow-400/40 hover:scale-125 transition-all cursor-pointer"
               />
               {[0, 1, 2, 3].map((idx) => (
                 <button
@@ -382,7 +607,7 @@ export default function Level1OrientasiTokohPage() {
                     setActiveCharIndex(idx);
                     setActiveView('centhang');
                   }}
-                  title={`Bukak Tantangan Centhang: ${charactersLevel1[idx]?.name}`}
+                  title={`Deleng Ciri Tokoh: ${charactersLevel1[idx]?.name}`}
                   className="w-3.5 h-3.5 rounded-full bg-stone-900/80 border border-yellow-400/60 hover:bg-yellow-400/40 hover:scale-125 transition-all cursor-pointer"
                 />
               ))}
@@ -480,214 +705,78 @@ export default function Level1OrientasiTokohPage() {
                 </span>
               )}
             </button>
-          </>
-        )}
 
-        {/* ========================================================
-            TAMPILAN 2: TANTANGAN CENTHANG KARAKTER (CAROUSEL)
-           ======================================================== */}
-        {activeView === 'centhang' && (
-          <>
-            {/* Background Slide Artwork Sesuai Tokoh yang Aktif */}
-            <Image
-              src={currentChar.image}
-              alt={`Tantangan ${currentChar.name}`}
-              fill
-              priority
-              sizes="100vw"
-              className="object-contain object-center transition-all duration-300"
-            />
-
-            {/* Top Navbar */}
-            <Link
-              href="/beranda"
-              title="Bali menyang Beranda"
-              className="absolute left-[28.5%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
-            />
-            <Link
-              href="/cptp"
-              title="Capaian lan Tujuan Pasinaon"
-              className="absolute left-[39%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
-            />
-            <Link
-              href="/peta"
-              title="Peta Petualangan"
-              className="absolute left-[45%] top-[2%] w-[6%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
-            />
-            <button
-              type="button"
-              onClick={() => setAudioPlaying((p) => !p)}
-              className="absolute left-[93.5%] top-[1.8%] w-[4%] h-[5.2%] rounded-full bg-transparent hover:bg-yellow-400/20 cursor-pointer z-30 flex items-center justify-center"
-            >
-              {audioPlaying && (
-                <span className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-ping opacity-75" />
-              )}
-            </button>
-
-            {/* Tombol Bali ke Mode Uraian */}
-            <button
-              type="button"
-              onClick={() => setActiveView('uraian')}
-              title="Bali menyang Tantangan Nulis 4 Tokoh"
-              className="absolute left-[87.5%] top-[11.2%] w-[8.5%] h-[6.0%] rounded-full bg-transparent hover:bg-yellow-400/15 hover:ring-2 hover:ring-yellow-400/50 active:scale-95 transition-all cursor-pointer z-30"
-            />
-
-            {/* Slider Controls: Previous (<) & Next (>) */}
-            <button
-              type="button"
-              onClick={handlePrevChar}
-              title="Tokoh Sadurunge (Panah Kiwa)"
-              className="absolute left-[9.3%] top-[45.5%] w-[3.5%] h-[6.5%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/60 active:scale-90 transition-all cursor-pointer z-30"
-            />
-            <button
-              type="button"
-              onClick={handleNextChar}
-              title="Tokoh Sabanjure (Panah Tengen)"
-              className="absolute left-[23.6%] top-[45.5%] w-[3.5%] h-[6.5%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/60 active:scale-90 transition-all cursor-pointer z-30"
-            />
-
-            {/* Checkbox Rows (5 Opsi) */}
-            {currentChar.options.map((optionText, idx) => {
-              const isChecked = currentSelected.includes(idx);
-              const isCorrect = currentChar.correctIndices.includes(idx);
-              const rowPos = rowPositions[idx] || rowPositions[0];
-
-              return (
-                <div
-                  key={idx}
-                  onClick={() => handleToggleOption(idx)}
-                  className="absolute left-[70.2%] w-[24.2%] z-20 cursor-pointer group flex items-center select-none"
-                  style={{ top: rowPos.top, height: rowPos.height }}
-                >
-                  <div className="absolute left-[1.1%] w-[9.5%] aspect-square rounded-md flex items-center justify-center transition-all group-hover:ring-1 group-hover:ring-yellow-400/60">
-                    {isChecked && !isSubmitted && (
-                      <span className="text-yellow-400 text-lg sm:text-2xl font-black drop-shadow">
-                        ✓
-                      </span>
-                    )}
-                    {isSubmitted && isChecked && isCorrect && (
-                      <span className="text-emerald-400 text-lg sm:text-2xl font-black drop-shadow animate-bounce">
-                        ✓
-                      </span>
-                    )}
-                    {isSubmitted && isChecked && !isCorrect && (
-                      <span className="text-red-500 text-lg sm:text-2xl font-black drop-shadow">
-                        ✗
-                      </span>
-                    )}
-                  </div>
-                  {isSubmitted && isChecked && (
-                    <div
-                      className={`ml-auto mr-2 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                        isCorrect
-                          ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/60'
-                          : 'bg-red-950/90 text-red-300 border border-red-500/60'
-                      }`}
-                    >
-                      {isCorrect ? '✓ Bener' : '✗ Salah'}
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-
-            {/* Tombol Priksa Jawaban */}
-            <button
-              type="button"
-              onClick={handleCheckAnswers}
-              disabled={isSavingChecklist}
-              title="Priksa Jawaban Ciri-ciri Tokoh"
-              className="absolute left-[75.0%] top-[69.0%] w-[15.8%] h-[6.5%] rounded-xl bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/80 active:scale-95 transition-all cursor-pointer z-30"
-            />
-
-            {/* Bottom Character Thumbnail Tabs */}
-            <div className="absolute left-[15.5%] top-[82.0%] w-[69.5%] h-[15.5%] z-20 flex items-center justify-between">
-              {charactersLevel1.map((char, idx) => (
-                <div
-                  key={char.id}
-                  onClick={() => {
-                    setActiveCharIndex(idx);
-                    setFeedbackMsg(null);
-                  }}
-                  title={`Pilih ${char.name}`}
-                  className="w-[23.5%] h-full rounded-2xl cursor-pointer hover:bg-yellow-400/10 hover:ring-1 hover:ring-yellow-300/50 transition-all"
-                />
-              ))}
+            {/* Tombol Bali menyang Centhang Ciri */}
+            <div className="absolute bottom-2.5 left-4 z-30">
+              <button
+                type="button"
+                onClick={() => setActiveView('centhang')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
+              >
+                <span>⬅</span> Bali menyang Centhang Ciri
+              </button>
             </div>
           </>
         )}
 
         {/* ========================================================
-            FLOATING TOP SWITCHER: GANTI MODE TAMPILAN & LEVEL 2
+            FLOATING TOP SWITCHER: TAHAP 1 ➔ TAHAP 2 ➔ LEVEL 2
            ======================================================== */}
-        <div className="absolute top-2.5 right-[18%] z-40 hidden sm:flex items-center gap-1.5 bg-stone-950/85 backdrop-blur-md px-2.5 py-1 rounded-full border border-yellow-500/50 shadow-xl">
-          <button
-            type="button"
-            onClick={() => setActiveView('uraian')}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
-              activeView === 'uraian'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md'
-                : 'text-amber-200/80 hover:text-yellow-300 hover:bg-amber-950/40'
-            }`}
-          >
-            📝 Tantangan Nulis
-          </button>
+        <div className="absolute top-2.5 right-[16%] z-40 flex items-center gap-1 bg-stone-950/90 backdrop-blur-md px-2 py-1 rounded-full border border-yellow-500/50 shadow-2xl">
+          {/* Tab 1: Centhang Ciri Dulu */}
           <button
             type="button"
             onClick={() => setActiveView('centhang')}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-all ${
+            className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 ${
               activeView === 'centhang'
-                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md font-black'
                 : 'text-amber-200/80 hover:text-yellow-300 hover:bg-amber-950/40'
             }`}
           >
-            ✓ Centhang Ciri
+            <span>✓</span>
+            <span>1. Centhang Ciri</span>
           </button>
+
+          {/* Tab 2: Tantangan Nulis Setelahnya */}
+          <button
+            type="button"
+            onClick={() => setActiveView('uraian')}
+            className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 ${
+              activeView === 'uraian'
+                ? 'bg-gradient-to-r from-amber-500 to-yellow-500 text-stone-950 shadow-md font-black'
+                : 'text-amber-200/80 hover:text-yellow-300 hover:bg-amber-950/40'
+            }`}
+          >
+            <span>📝</span>
+            <span>2. Tantangan Nulis</span>
+          </button>
+
+          {/* Tab 3: Menuju Level 2 */}
           <button
             type="button"
             onClick={() => {
-              const allDone = Boolean(
-                essayAnswers.tokoh1?.trim() &&
-                essayAnswers.tokoh2?.trim() &&
-                essayAnswers.tokoh3?.trim() &&
-                essayAnswers.tokoh4?.trim()
-              );
-              if (allDone) {
+              if (isAllEssayFilled) {
                 router.push('/level2');
               } else {
                 const missing = [];
-                if (!essayAnswers.tokoh1?.trim()) missing.push('Tokoh 1');
-                if (!essayAnswers.tokoh2?.trim()) missing.push('Tokoh 2');
-                if (!essayAnswers.tokoh3?.trim()) missing.push('Tokoh 3');
-                if (!essayAnswers.tokoh4?.trim()) missing.push('Tokoh 4');
+                if (!essayAnswers.tokoh1?.trim()) missing.push('Tokoh 1 (Rara Kuning)');
+                if (!essayAnswers.tokoh2?.trim()) missing.push('Tokoh 2 (Rara Runting)');
+                if (!essayAnswers.tokoh3?.trim()) missing.push('Tokoh 3 (Resi Darmo)');
+                if (!essayAnswers.tokoh4?.trim()) missing.push('Tokoh 4 (Lembu Amiseno)');
                 setEssayToast({
                   type: 'error',
-                  msg: `⚠️ Isi dhisik 4 tokoh sadurunge menyang Level 2! (Kurang: ${missing.join(', ')})`,
+                  msg: `⚠️ Rampungake Tantangan Nulis dhisik sadurunge menyang Level 2! (Kurang: ${missing.join(', ')})`,
                 });
                 setTimeout(() => setEssayToast(null), 4500);
               }
             }}
-            className={`px-3 py-1 rounded-full text-xs font-bold transition-all flex items-center gap-1.5 ${
-              Boolean(
-                essayAnswers.tokoh1?.trim() &&
-                essayAnswers.tokoh2?.trim() &&
-                essayAnswers.tokoh3?.trim() &&
-                essayAnswers.tokoh4?.trim()
-              )
+            className={`px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full text-[10px] sm:text-xs font-bold transition-all flex items-center gap-1 ${
+              isAllEssayFilled
                 ? 'bg-gradient-to-r from-emerald-500 to-emerald-400 text-stone-950 shadow-lg font-black hover:scale-105'
                 : 'bg-stone-800/90 text-stone-400 hover:text-stone-300 hover:bg-stone-800'
             }`}
           >
-            <span>
-              {Boolean(
-                essayAnswers.tokoh1?.trim() &&
-                essayAnswers.tokoh2?.trim() &&
-                essayAnswers.tokoh3?.trim() &&
-                essayAnswers.tokoh4?.trim()
-              )
-                ? '🔓'
-                : '🔒'}
-            </span>
+            <span>{isAllEssayFilled ? '🔓' : '🔒'}</span>
             <span>Level 2 ➜</span>
           </button>
         </div>
@@ -717,6 +806,45 @@ export default function Level1OrientasiTokohPage() {
         )}
 
       </div>
+
+      {/* ========================================================
+          MODAL TRANSISI: SEMUA CIRI TELAH DICENTANG!
+          MENGAJAK SISWA LANJUT KE TANTANGAN NULIS
+         ======================================================== */}
+      {showTransitionToEssayModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md animate-fade-in font-sans">
+          <div className="max-w-md w-full bg-stone-900 border-2 border-yellow-500/80 rounded-2xl p-6 shadow-2xl text-center text-stone-100 space-y-4">
+            <div className="w-16 h-16 rounded-full bg-yellow-500/20 border-2 border-yellow-400 text-yellow-300 text-3xl flex items-center justify-center mx-auto shadow-lg animate-bounce">
+              🎉
+            </div>
+            <h3 className="text-xl font-serif font-black text-yellow-400">
+              Ciri-ciri 4 Tokoh Wis Dicenthang!
+            </h3>
+            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
+              Sampeyan wis kasil ngenali busana lan ciri-ciri Putri Rara Kuning, Rara Runting, Resi Darmo, lan Patih Lembu Amiseno. Ayo saiki lanjut menyang <strong>Tantangan Nulis</strong> kanggo njlentrehake watak lan paragane!
+            </p>
+            <div className="pt-2 flex flex-col sm:flex-row gap-2.5 justify-center">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowTransitionToEssayModal(false);
+                  setActiveView('uraian');
+                }}
+                className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
+              >
+                <span>📝</span> Lanjut menyang Tantangan Nulis ➜
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowTransitionToEssayModal(false)}
+                className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 font-bold text-xs transition active:scale-95"
+              >
+                Tetep ing Centhang Ciri
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ========================================================
           MODAL: LEVEL 2 KABUKAK (LEVEL 2 UNLOCKED)
@@ -766,13 +894,13 @@ export default function Level1OrientasiTokohPage() {
             </h3>
             <div className="mt-4 space-y-3 text-xs sm:text-sm text-stone-300 leading-relaxed">
               <p>
-                <strong>1. Tantangan Nulis (Uraian):</strong> Wacanen katrangan para tokoh, banjur ketik jeneng paraga kasebut sarta watek/katrangan ringkese ing kothak Tokoh 1 nganti Tokoh 4.
+                <strong>1. Langkah 1 (Centhang Ciri Dhisik):</strong> Gatekna katrangan busana lan wacan para tokoh ing sisih kiwa, banjur centhang 2-3 pilihan sing bener lan klik tombol <em>Priksa Jawaban</em>. Lakoni kanggo kabeh 4 tokoh.
               </p>
               <p>
-                <strong>2. Simpen Wangsulan:</strong> Sawise nulis, klik tombol <strong>💾 Simpan</strong> ing ngisor supaya wangsulanmu langsung disimpen lan bisa dipriksani dening Bapak/Ibu Guru.
+                <strong>2. Langkah 2 (Tantangan Nulis):</strong> Sawise ngenali ciri-ciri kabeh tokoh, klik tombol <em>Lanjut menyang Tantangan Nulis 📝</em> kanggo nulis jeneng lan watek/katrangan ringkes ing kothak Tokoh 1 nganti Tokoh 4.
               </p>
               <p>
-                <strong>3. Tantangan Centhang:</strong> Sampeyan uga bisa ngerjakake kuis centhang pilihan ciri-ciri tokoh kanthi ngeklik bunderan ing ndhuwur utawa tombol ing sisih tengen.
+                <strong>3. Simpen Wangsulan & Bukak Level 2:</strong> Sawise nulis, klik tombol <strong>💾 Simpan</strong> ing ngisor supaya wangsulanmu langsung disimpen lan Level 2 kabukak otomatis!
               </p>
             </div>
             <div className="mt-6 flex justify-end">
