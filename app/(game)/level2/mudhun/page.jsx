@@ -49,9 +49,9 @@ export default function Level2MudhunPage() {
   const [toast, setToast] = useState(null);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showStartModal, setShowStartModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/jamu');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -95,9 +95,23 @@ export default function Level2MudhunPage() {
   }, []);
 
   const handleMiwitiNgumbara = useCallback(() => {
+    if (navLockRef.current) return;
+    navLockRef.current = true;
     playChime();
-    setShowStartModal(true);
-  }, [playChime]);
+    router.push('/level2/jamu');
+  }, [playChime, router]);
+
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (showStoryModal || showHelpModal) return;
+      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'KeyD') {
+        e.preventDefault();
+        handleMiwitiNgumbara();
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [handleMiwitiNgumbara, showHelpModal, showStoryModal]);
 
   if (loading) {
     return (
@@ -211,7 +225,7 @@ export default function Level2MudhunPage() {
         <AnalogJoystick
           onChange={({ x, active }) => {
             if (!active) return;
-            if (x > 0.75 && !showStartModal) {
+            if (x > 0.75) {
               handleMiwitiNgumbara();
             } else if (x < -0.75 && !navLockRef.current) {
               navLockRef.current = true;
@@ -225,46 +239,6 @@ export default function Level2MudhunPage() {
       {toast && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 max-w-lg w-[92%] px-4 py-2.5 rounded-2xl border bg-emerald-950/95 border-emerald-400 text-emerald-100 text-xs sm:text-sm font-bold shadow-2xl">
           {toast.text}
-        </div>
-      )}
-
-      {/* Modal Miwiti Ngumbara Golek Gegodhongan */}
-      {showStartModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md font-sans">
-          <div className="relative max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 shadow-2xl text-stone-100 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-lg">
-              🌿
-            </div>
-            <h3 className="text-xl font-serif font-black text-yellow-400">
-              Tantangan Ngumpulake Gegodhongan Jamu!
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Miturut dhawuhe <strong>Resi Darmo</strong>, Rara Kuning lan Rara Runting kudu nggoleki 4 jinis gegodhongan ing alas kanggo diracik dadi jamu usada:
-            </p>
-            <div className="grid grid-cols-2 gap-2 text-left text-xs bg-stone-950/80 p-3 rounded-xl border border-amber-500/30">
-              {HERBAL_LEAVES.map((l) => (
-                <div key={l.id} className="flex items-center justify-between gap-1 px-2 py-1 rounded bg-amber-950/40 text-amber-200">
-                  <span className="truncate font-semibold">🍃 {l.name.replace('Godhong ', '')}</span>
-                  <span className="font-mono text-yellow-300 font-bold">0/{l.targetCount}</span>
-                </div>
-              ))}
-            </div>
-            <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowStartModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-              >
-                Deleng Tantangan
-              </button>
-              <Link
-                href="/peta"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-              >
-                🗺️ Lanjut menyang Peta →
-              </Link>
-            </div>
-          </div>
         </div>
       )}
 
