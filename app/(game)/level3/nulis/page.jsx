@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import SimpananJawabanView from '@/components/game/SimpananJawabanView';
 
 /*
   Lv 3 – Mode Nulis (1024 x 768, 4:3)
@@ -57,7 +58,8 @@ export default function Level3NulisPage() {
   const [toast, setToast] = useState(null);
   const [audioPlaying, setAudioPlaying] = useState(false);
 
-  const [modal, setModal] = useState(null); // 'priksa' | 'ngulang' | 'tas' | 'tugas' | 'buku' | 'saved'
+  const [modal, setModal] = useState(null); // 'priksa' | 'ngulang' | 'tugas' | 'saved'
+  const [showSimpanan, setShowSimpanan] = useState(false);
 
   useEffect(() => {
     async function load() {
@@ -139,6 +141,18 @@ export default function Level3NulisPage() {
     );
   }
 
+  if (showSimpanan) {
+    return (
+      <SimpananJawabanView
+        onClose={() => setShowSimpanan(false)}
+        onInsertText={(txt) => {
+          setNarasi((prev) => (prev.trim() ? `${prev.trim()} ${txt}` : txt));
+          setToast({ type: 'success', text: '✨ Jawaban sadurunge dilebokake menyang narasi!' });
+        }}
+      />
+    );
+  }
+
   return (
     <div className="relative w-screen h-screen bg-[#04120a] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
       {/* Container 4:3 (1024 x 768) – containerType size kanggo unit cqh */}
@@ -155,10 +169,10 @@ export default function Level3NulisPage() {
           className="object-contain object-center"
         />
 
-        {/* ===== TOP BAR: Tas, Tugas, Peta, Buku Cathetan, Swara, Setelan ===== */}
-        <button type="button" onClick={() => setModal('tas')} title="Tas"
+        {/* ===== TOP BAR: Tas (Simpanan Jawaban), Tugas, Peta, Buku Cathetan (Simpanan Jawaban), Swara, Setelan ===== */}
+        <button type="button" onClick={() => setShowSimpanan(true)} title="Tas – Bukak Simpanan Jawabanmu"
           className="absolute left-[53.8%] top-[1.0%] w-[7.2%] h-[4.6%] rounded-lg bg-transparent hover:bg-yellow-400/15 cursor-pointer z-30">
-          <span className="sr-only">Tas</span>
+          <span className="sr-only">Simpanan Jawaban</span>
         </button>
         <button type="button" onClick={() => setModal('tugas')} title="Tugas"
           className="absolute left-[61.9%] top-[1.0%] w-[8.6%] h-[4.6%] rounded-lg bg-transparent hover:bg-yellow-400/15 cursor-pointer z-30">
@@ -166,9 +180,9 @@ export default function Level3NulisPage() {
         </button>
         <Link href="/peta" title="Peta Petualangan"
           className="absolute left-[71.3%] top-[1.0%] w-[8.0%] h-[4.6%] rounded-lg bg-transparent hover:bg-yellow-400/15 cursor-pointer z-30" />
-        <button type="button" onClick={() => setModal('buku')} title="Buku Cathetan"
+        <button type="button" onClick={() => setShowSimpanan(true)} title="Buku Cathetan – Rekapan Jawaban Sadurunge"
           className="absolute left-[80.1%] top-[1.0%] w-[12.4%] h-[4.6%] rounded-lg bg-transparent hover:bg-yellow-400/15 cursor-pointer z-30">
-          <span className="sr-only">Buku Cathetan</span>
+          <span className="sr-only">Buku Cathetan Jawaban</span>
         </button>
         <button type="button" onClick={() => setAudioPlaying((p) => !p)} title={audioPlaying ? 'Pateni Swara' : 'Uripake Swara'}
           className="absolute left-[93.0%] top-[1.0%] w-[3.0%] h-[4.6%] rounded-lg bg-transparent hover:bg-yellow-400/15 cursor-pointer z-30">
@@ -267,6 +281,16 @@ export default function Level3NulisPage() {
                 <p className="text-xs sm:text-sm text-stone-300 font-serif text-center">Narasi Legenda Rara Kuning ({wordCount} tembung) wis disimpen lan bisa diwaca guru ing Dashboard.</p>
                 <div className="flex flex-col sm:flex-row gap-2 justify-center">
                   <button type="button" onClick={() => setModal(null)} className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer">Terusake Nulis</button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setModal(null);
+                      setShowSimpanan(true);
+                    }}
+                    className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-950 font-black text-xs cursor-pointer"
+                  >
+                    🎒 Simpanan Jawabanmu
+                  </button>
                   <Link href="/peta" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs text-center">🗺️ Menyang Peta →</Link>
                 </div>
               </>
