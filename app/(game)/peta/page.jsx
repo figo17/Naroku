@@ -149,11 +149,11 @@ export default function PetaPetualanganPage() {
 
         {/* ---------------- LEVEL 3: NULIS ---------------- */}
         <Link
-          href="/play?level=3"
+          href="/level3"
           onMouseEnter={() => setHoveredLevel(3)}
           onMouseLeave={() => setHoveredLevel(null)}
-          title="Level 3: Nulis"
-          aria-label="Level 3 Nulis"
+          title="Level 3: Nulis Crita"
+          aria-label="Level 3 Nulis Crita"
           className="group absolute left-[69.5%] top-[28%] w-[20%] h-[33%] rounded-3xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-400/60 hover:shadow-[0_0_25px_rgba(250,204,21,0.5)] active:scale-95 transition-all duration-200 cursor-pointer z-20 flex flex-col items-center justify-end pb-1"
         >
           {/* Tooltip Indikator Level 3 */}

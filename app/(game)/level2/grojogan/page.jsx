@@ -16,9 +16,10 @@ export default function Level2AdusAirTerjunPage() {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showNextModal, setShowNextModal] = useState(false);
+  const navLockRef = useRef(false);
 
   useEffect(() => {
+    router.prefetch('/level2/grojogan-resi');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -56,14 +57,16 @@ export default function Level2AdusAirTerjunPage() {
   }, []);
 
   const handleBanjur = useCallback(() => {
+    if (navLockRef.current) return;
+    navLockRef.current = true;
     playWaterfallChime();
     recordLevel2Mission(supabase, 'grojogan');
-    setShowNextModal(true);
-  }, [playWaterfallChime, supabase]);
+    router.push('/level2/grojogan-resi');
+  }, [playWaterfallChime, router, supabase]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (showStoryModal || showHelpModal || showNextModal) return;
+      if (showStoryModal || showHelpModal) return;
       if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
         handleBanjur();
@@ -71,7 +74,7 @@ export default function Level2AdusAirTerjunPage() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleBanjur, showHelpModal, showNextModal, showStoryModal]);
+  }, [handleBanjur, showHelpModal, showStoryModal]);
 
   if (loading) {
     return (
@@ -165,38 +168,6 @@ export default function Level2AdusAirTerjunPage() {
           </Link>
         </div>
       </div>
-
-      {/* Modal Lanjut Sawise Adus ing Air Terjun */}
-      {showNextModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md font-sans">
-          <div className="relative max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 shadow-2xl text-stone-100 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-cyan-500/20 border-2 border-cyan-400 flex items-center justify-center text-3xl shadow-lg animate-bounce">
-              🌊
-            </div>
-            <h3 className="text-xl font-serif font-black text-yellow-400">
-              Adus Usada ing Air Terjun Rara Kuning!
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Saliyane ngombe jamu racikan <strong>Resi Darmo</strong>, Rara Kuning lan Rara Runting uga tansah adus ing <strong>Air Terjun Rara Kuning</strong> sing banyuné seger lan mbiyantu marasaké penyakit.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowNextModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-              >
-                Deleng Adegan
-              </button>
-              <Link
-                href="/peta"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-              >
-                🗺️ Lanjut menyang Peta →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Katrangan Crita */}
       {showStoryModal && (
