@@ -110,6 +110,7 @@ export default function Level2NgumpulakeJamuPage() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/ngolah');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -228,11 +229,15 @@ export default function Level2NgumpulakeJamuPage() {
         analogRef.current = { x: 0, y: 0, active: false };
         autoTargetRef.current = null;
         setIsWalking(false);
+        playVictorySound();
+        recordLevel2Mission(supabase, 'jamu');
+        setToast({
+          type: 'success',
+          text: '🎉 Jangkep 12/12 godhong! Bali menyang Resi Darmo kanggo ngolah jamu...',
+        });
         setTimeout(() => {
-          playVictorySound();
-          recordLevel2Mission(supabase, 'jamu');
-          setShowSuccessModal(true);
-        }, 450);
+          router.push('/level2/ngolah');
+        }, 900);
       } else if (nextVal === TARGET_PER_HERB) {
         setToast({
           type: 'success',
@@ -242,7 +247,7 @@ export default function Level2NgumpulakeJamuPage() {
 
       return true;
     },
-    [playPickSound, playVictorySound, supabase]
+    [playPickSound, playVictorySound, router, supabase]
   );
 
   const stepMovement = useCallback(
@@ -649,10 +654,10 @@ export default function Level2NgumpulakeJamuPage() {
                 Baleni 🔄
               </button>
               <Link
-                href="/peta"
+                href="/level2/ngolah"
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
               >
-                🗺️ Rampung &amp; Menyang Peta →
+                🍵 Lanjut Ngolah Jamu →
               </Link>
             </div>
           </div>
