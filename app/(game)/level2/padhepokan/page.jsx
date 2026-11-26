@@ -10,11 +10,11 @@ import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
-  STAGE FLOW (/level2/padhepokan - sawise /level2/labirin, sadurunge /level2/gladhen):
+  STAGE FLOW (/level2/padhepokan - sawise /level2/gladhen):
   'intro' -> screen_padhepokan_komplit.jpg (awalan lengkap: karakter Rara Runting & Rara Kuning + dialog)
   'walk'  -> screen_padhepokan_polos.jpg (no character), diganti sprite pixel art + kontroler Analog 360°
              maju menyang undhak-undhakan pendopo Padhepokan ing tengah alas.
-  'done'  -> Modal kasil mlebu Padhepokan -> lanjut /level2/gladhen
+  Begitu tekan undhak-undhakan Padhepokan -> langsung pindah scene menyang /level2/sowan -> /level2/mudhun.
 */
 
 const START_POS = { x: 70.5, y: 95.0 };
@@ -25,9 +25,10 @@ export default function Level2PadhepokanPage() {
   const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
   const audioCtxRef = useRef(null);
+  const enteredRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
-  const [stage, setStage] = useState('intro'); // 'intro' | 'walk' | 'done'
+  const [stage, setStage] = useState('intro'); // 'intro' | 'walk' | 'entering'
   const stageRef = useRef('intro');
 
   const [charPos, setCharPos] = useState(START_POS);
@@ -42,6 +43,8 @@ export default function Level2PadhepokanPage() {
   }, []);
 
   useEffect(() => {
+    router.prefetch('/level2/sowan');
+    router.prefetch('/level2/mudhun');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -118,16 +121,18 @@ export default function Level2PadhepokanPage() {
       charPosRef.current = next;
       setCharPos(next);
 
-      // Sampai di undhak-undhakan / pintu tengah Padhepokan (x: 36..52, y: 60..72)
-      if (nx >= 36 && nx <= 52 && ny >= 60 && ny <= 72) {
+      // Sampai di undhak-undhakan / pintu tengah Padhepokan (x: 36..52, y: 60..72) -> langsung pindah scene!
+      if (nx >= 36 && nx <= 52 && ny >= 60 && ny <= 72 && !enteredRef.current) {
+        enteredRef.current = true;
         stopAnalog();
         setIsWalking(false);
         playVictory();
+        goStage('entering');
         recordLevel2Mission(supabase, 'padhepokan');
-        goStage('done');
+        router.push('/level2/sowan');
       }
     },
-    [goStage, playVictory, stopAnalog, supabase]
+    [goStage, playVictory, router, stopAnalog, supabase]
   );
 
   useEffect(() => {
@@ -175,15 +180,6 @@ export default function Level2PadhepokanPage() {
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
   }, [moveCharacter, startWalk]);
-
-  const reset = () => {
-    stopAnalog();
-    charPosRef.current = START_POS;
-    setCharPos(START_POS);
-    setFacingLeft(true);
-    setIsWalking(false);
-    goStage('intro');
-  };
 
   if (loading) {
     return (
@@ -242,7 +238,7 @@ export default function Level2PadhepokanPage() {
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 text-amber-300 font-bold text-[10px] sm:text-xs shadow-lg">
           {stage === 'intro' && '🏯 Gerakake Analog / Pencet "Maju menyang Padhepokan"'}
           {stage === 'walk' && '🚶‍♀️ Maju menyang Undhak-undhakan Padhepokan!'}
-          {stage === 'done' && '🎉 Tekan Padhepokan!'}
+          {stage === 'entering' && '🏯 Mlebu menyang Padhepokan...'}
         </div>
 
         {/* Tombol Mulai Maju pada Scene Intro */}
@@ -282,7 +278,7 @@ export default function Level2PadhepokanPage() {
         )}
 
         {/* Kontroler Analog 360° */}
-        {stage !== 'done' && (
+        {stage !== 'entering' && (
           <AnalogJoystick
             onStart={() => {
               if (stageRef.current === 'intro') startWalk();
@@ -291,36 +287,6 @@ export default function Level2PadhepokanPage() {
               analogRef.current = v;
             }}
           />
-        )}
-
-        {/* Modal Selesai Tekan Padhepokan -> Lanjut ke Gladhen Nulis Akhir */}
-        {stage === 'done' && (
-          <div className="absolute inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
-              <div className="text-5xl">🏯</div>
-              <h3 className="text-xl font-serif font-black text-yellow-400">
-                Tekan ing Padhepokan Gunung Wilis!
-              </h3>
-              <p className="text-xs sm:text-sm text-stone-300 font-serif leading-relaxed">
-                Alhamdulillah! Sawise ngliwati maneka warna pacoban ing alas, Putri Rara Kuning lan Putri Rara Runting kasil tekan ing Padhepokan kanthi slamet.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-                >
-                  Baleni 🔄
-                </button>
-                <Link
-                  href="/peta"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-                >
-                  🗺️ Rampung Level 2 &amp; Menyang Peta →
-                </Link>
-              </div>
-            </div>
-          </div>
         )}
       </div>
 
