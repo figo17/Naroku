@@ -15,9 +15,9 @@ export default function Level3IntroPage() {
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [hoveredStart, setHoveredStart] = useState(false);
   const [showMateriModal, setShowMateriModal] = useState(false);
-  const [showStartModal, setShowStartModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level3/nulis');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -56,8 +56,8 @@ export default function Level3IntroPage() {
 
   const handleMiwitiNulis = useCallback(() => {
     playChime();
-    setShowStartModal(true);
-  }, [playChime]);
+    router.push('/level3/nulis');
+  }, [playChime, router]);
 
   if (loading) {
     return (
@@ -172,38 +172,6 @@ export default function Level3IntroPage() {
           </Link>
         </div>
       </div>
-
-      {/* Modal Miwiti Nulis Level 3 */}
-      {showStartModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md font-sans">
-          <div className="relative max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 shadow-2xl text-stone-100 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-lg animate-bounce">
-              ✍️
-            </div>
-            <h3 className="text-xl font-serif font-black text-yellow-400">
-              Lv 3 – Nulis Narasi Crita Lengkap
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Siap miwiti <strong>Level 3</strong>! Ing tahap iki, siswa nulis narasi crita <strong>Legenda Rara Kuning</strong> kanthi runtut lan lengkap adhedhasar petualangan Level 1 lan Level 2 sing wis dilakoni.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowStartModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-              >
-                Deleng Tujuan Lv 3
-              </button>
-              <Link
-                href="/peta"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-              >
-                🗺️ Bali menyang Peta →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Materi Ringkesan Cengkorongan Crita */}
       {showMateriModal && (
