@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 export default function Level2JurangTaliPage() {
   const router = useRouter();
@@ -257,6 +258,7 @@ export default function Level2JurangTaliPage() {
           setHasCrossed(true);
           setAnimationMode('idle'); // Berganti kembali ke idle gembira
           playVictorySound();
+          recordLevel2Mission(supabase, 'jurang');
           setActiveSpeech('Putri Rara Kuning: "Kasil! Kita wis tekan seberang kanthi slamet!"');
 
           setToast({

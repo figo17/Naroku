@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   STAGE FLOW (/level2/pring):
@@ -109,6 +110,7 @@ export default function Level2PringPage() {
       } else if (s === 'bridge' && nx >= 42 && ny <= 62) {
         stopAnalog();
         setIsWalking(false);
+        recordLevel2Mission(supabase, 'pring');
         goStage('done');
       }
     },

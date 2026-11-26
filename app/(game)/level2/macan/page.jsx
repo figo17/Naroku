@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   STAGE FLOW (/level2/macan - sebelum /level2/pring):
@@ -170,6 +171,7 @@ export default function Level2MacanPage() {
         stopAnalog();
         setIsWalking(false);
         playSound('victory');
+        recordLevel2Mission(supabase, 'macan');
         goStage('done');
       }
     },

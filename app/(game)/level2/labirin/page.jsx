@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   STAGE FLOW (/level2/labirin - sawise /level2/kembang):
@@ -205,6 +206,7 @@ export default function Level2LabirinPage() {
             setIsMoving(false);
             setWalkFrame(0);
             playSound('victory');
+            recordLevel2Mission(supabase, 'labirin');
             goStage('done');
           }
         } else {

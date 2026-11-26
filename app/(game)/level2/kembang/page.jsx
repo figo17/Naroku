@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   STAGE FLOW (/level2/kembang - sawise /level2/pring):
@@ -122,6 +123,7 @@ export default function Level2KembangPage() {
         stopAnalog();
         setIsWalking(false);
         playChime();
+        recordLevel2Mission(supabase, 'kembang');
         goStage('clear');
         setToast({
           type: 'success',

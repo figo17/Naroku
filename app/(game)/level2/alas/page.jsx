@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   SCENE FLOW:
@@ -201,6 +202,7 @@ export default function Level2AlasKapakPage() {
 
     if (nextProgress >= 100) {
       playSound('success');
+      recordLevel2Mission(supabase, 'alas');
       setTimeout(() => {
         setScene('cut');
         sceneRef.current = 'cut';

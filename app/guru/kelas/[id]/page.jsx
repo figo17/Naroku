@@ -4,6 +4,7 @@ import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { LEVEL2_MISSIONS } from "@/lib/level2Progress";
 
 export default function GuruKelasDetailPage({ params }) {
   // Support both React 19 / Next.js 15 unwrapped params or standard object
@@ -56,40 +57,55 @@ export default function GuruKelasDetailPage({ params }) {
         console.error("Error fetching students:", stuError);
       }
 
-      const studentsWithProgress = await Promise.all(
-        (studentList || []).map(async (stu) => {
-          // Get student game progress
-          const { data: prog } = await supabase
-            .from("game_progress")
-            .select("current_map, quest_stage, is_completed")
-            .eq("user_id", stu.id)
-            .maybeSingle();
+      const sIds = (studentList || []).map((s) => s.id);
+      const [progListRes, quizListRes, oriListRes, nanListRes] =
+        sIds.length > 0
+          ? await Promise.all([
+              supabase
+                .from("game_progress")
+                .select("user_id, current_map, quest_stage, is_completed")
+                .in("user_id", sIds),
+              supabase
+                .from("quiz_results")
+                .select("user_id, skor, is_correct")
+                .in("user_id", sIds),
+              supabase
+                .from("level2_orientasi_results")
+                .select("user_id, is_completed, completed_missions")
+                .in("user_id", sIds),
+              supabase
+                .from("level2_nanjak_answers")
+                .select("user_id, answer, gladhen_answer")
+                .in("user_id", sIds),
+            ])
+          : [{ data: [] }, { data: [] }, { data: [] }, { data: [] }];
 
-          // Get latest quiz results for this student
-          const { data: quizRes } = await supabase
-            .from("quiz_results")
-            .select("skor, is_correct, created_at")
-            .eq("user_id", stu.id)
-            .order("created_at", { ascending: false });
+      const progMap = Object.fromEntries((progListRes.data || []).map((p) => [p.user_id, p]));
+      const oriMap = Object.fromEntries((oriListRes.data || []).map((o) => [o.user_id, o]));
+      const nanMap = Object.fromEntries((nanListRes.data || []).map((n) => [n.user_id, n]));
 
-          // Calculate total score or average
-          let totalScore = 0;
-          if (quizRes && quizRes.length > 0) {
-            totalScore = quizRes.reduce((acc, curr) => acc + (curr.skor || 0), 0);
-          }
-
-          return {
-            ...stu,
-            progress: prog || {
-              current_map: "map1_goa",
-              quest_stage: 1,
-              is_completed: false,
-            },
-            quizCount: quizRes?.length || 0,
-            totalScore: totalScore,
-          };
-        })
-      );
+      const studentsWithProgress = (studentList || []).map((stu) => {
+        const qList = (quizListRes.data || []).filter((q) => q.user_id === stu.id);
+        const totalScore = qList.reduce((acc, curr) => acc + (curr.skor || 0), 0);
+        const ori = oriMap[stu.id];
+        const nan = nanMap[stu.id];
+        return {
+          ...stu,
+          progress: progMap[stu.id] || {
+            current_map: "map1_goa",
+            quest_stage: 1,
+            is_completed: false,
+          },
+          lv2: {
+            orientasiDone: Boolean(ori?.is_completed),
+            missionsCount: Array.isArray(ori?.completed_missions) ? ori.completed_missions.length : 0,
+            nanjakAnswer: nan?.answer || "",
+            gladhenAnswer: nan?.gladhen_answer || "",
+          },
+          quizCount: qList.length,
+          totalScore,
+        };
+      });
 
       setStudents(studentsWithProgress);
     } catch (err) {
@@ -149,10 +165,10 @@ export default function GuruKelasDetailPage({ params }) {
       "No",
       "Nama Lengkap",
       "Nomor Induk / NISN",
-      "Babak Quest Saat Ini",
-      "Peta Terakhir",
-      "Status Tamat",
-      "Jumlah Soal Dikerjakan",
+      "Lv2 Perawatan Herbal",
+      "Lv2 Misi Alas",
+      "Lv2 Nulis Nanjak",
+      "Lv2 Gladhen Akhir",
       "Total Skor Evaluasi",
     ];
 
@@ -161,10 +177,10 @@ export default function GuruKelasDetailPage({ params }) {
       index + 1,
       `"${(s.nama_lengkap || "").replace(/"/g, '""')}"`,
       `"${s.nomor_induk || "-"}"`,
-      s.progress?.quest_stage || 1,
-      s.progress?.current_map || "-",
-      s.progress?.is_completed ? "Tamat" : "Sedang Berjalan",
-      s.quizCount || 0,
+      s.lv2?.orientasiDone ? "Selesai" : "Belum",
+      `"${s.lv2?.missionsCount || 0}/${LEVEL2_MISSIONS.length}"`,
+      `"${(s.lv2?.nanjakAnswer || "-").replace(/"/g, '""')}"`,
+      `"${(s.lv2?.gladhenAnswer || "-").replace(/"/g, '""')}"`,
       s.totalScore || 0,
     ]);
 
@@ -286,8 +302,8 @@ export default function GuruKelasDetailPage({ params }) {
                   <th className="px-4 py-3">No</th>
                   <th className="px-4 py-3">Nama Lengkap</th>
                   <th className="px-4 py-3">NISN / No. Induk</th>
-                  <th className="px-4 py-3">Babak Quest</th>
-                  <th className="px-4 py-3">Status</th>
+                  <th className="px-4 py-3">Progres Level 2</th>
+                  <th className="px-4 py-3">Jawaban Nulis Lv 2</th>
                   <th className="px-4 py-3">Skor Quiz</th>
                   <th className="px-4 py-3 text-right">Aksi</th>
                 </tr>
@@ -305,20 +321,35 @@ export default function GuruKelasDetailPage({ params }) {
                     <td className="px-4 py-3.5 font-mono text-stone-400">
                       {student.nomor_induk || "-"}
                     </td>
-                    <td className="px-4 py-3.5">
-                      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-950 text-amber-300 border border-amber-800">
-                        Babak {student.progress?.quest_stage || 1}
+                    <td className="px-4 py-3.5 space-x-1.5 whitespace-nowrap">
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold border ${
+                          student.lv2?.orientasiDone
+                            ? "bg-emerald-950 text-emerald-300 border-emerald-700"
+                            : "bg-stone-900 text-stone-400 border-stone-700"
+                        }`}
+                      >
+                        🌿 Herbal {student.lv2?.orientasiDone ? "✓" : "-"}
+                      </span>
+                      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-cyan-950 text-cyan-300 border border-cyan-800">
+                        🗺️ {student.lv2?.missionsCount || 0}/{LEVEL2_MISSIONS.length} Pos
                       </span>
                     </td>
-                    <td className="px-4 py-3.5">
-                      {student.progress?.is_completed ? (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-950 text-emerald-400 border border-emerald-800">
-                          ✓ Tamat
-                        </span>
+                    <td className="px-4 py-3.5 max-w-[220px] text-xs">
+                      {student.lv2?.nanjakAnswer?.trim() || student.lv2?.gladhenAnswer?.trim() ? (
+                        <Link
+                          href="/guru/rekap-level2"
+                          className="text-emerald-300 hover:text-yellow-300 underline underline-offset-2"
+                        >
+                          {[
+                            student.lv2?.nanjakAnswer?.trim() ? "Nanjak ✓" : null,
+                            student.lv2?.gladhenAnswer?.trim() ? "Gladhen ✓" : null,
+                          ]
+                            .filter(Boolean)
+                            .join(" • ")}
+                        </Link>
                       ) : (
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium bg-stone-800 text-stone-300">
-                          Sedang Bermain
-                        </span>
+                        <span className="text-stone-500 italic">Belum mengisi</span>
                       )}
                     </td>
                     <td className="px-4 py-3.5 font-mono font-bold text-yellow-400">

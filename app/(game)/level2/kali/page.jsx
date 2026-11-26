@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 export default function Level2KaliJembatanPage() {
   const router = useRouter();
@@ -159,6 +160,7 @@ export default function Level2KaliJembatanPage() {
           setTimeout(() => {
             setIsCrossing(false);
             setHasCrossed(true);
+            recordLevel2Mission(supabase, 'kali');
           }, 2400);
         }, 2800);
       }, 700);

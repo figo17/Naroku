@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
+import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
   SCENE FLOW (/level2/gua):
@@ -165,6 +166,7 @@ export default function Level2GuaOborPage() {
       setIsWalking(false);
       stopAnalog();
       playSound('victory');
+      recordLevel2Mission(supabase, 'gua');
       showToast('🎉 Kasil tekan bibir guwa kanthi slamet!', 'success');
     }
   }, [playSound, showToast, stopAnalog]);
