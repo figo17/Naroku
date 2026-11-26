@@ -211,10 +211,10 @@ export default function Level2GladhenAkhirPage() {
         {/* Navigasi Pojok Bawah */}
         <div className="absolute bottom-2.5 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
           <Link
-            href="/level2/labirin"
+            href="/level2/padhepokan"
             className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
-            <span>⬅</span> Bali menyang Labirin
+            <span>⬅</span> Bali menyang Padhepokan
           </Link>
 
           {answer?.trim() && (

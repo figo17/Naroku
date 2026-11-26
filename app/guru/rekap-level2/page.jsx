@@ -147,7 +147,7 @@ export default function RekapLevel2Page() {
             <span>🌿</span> Rekap Lengkap Level 2 (Perawatan, Misi Alas &amp; Gladhen Nulis)
           </h1>
           <p className="text-stone-400 text-xs sm:text-sm mt-1">
-            Integrasi kabeh wangsulan murid ing Level 2: Orientasi Perawatan, Tugas Nulis Nanjak, 8 Misi Alas Gunung Wilis, lan Gladhen Nulis Akhir.
+            Integrasi kabeh wangsulan murid ing Level 2: Orientasi Perawatan, Tugas Nulis Nanjak, {LEVEL2_MISSIONS.length} Misi Alas Gunung Wilis, lan Gladhen Nulis Akhir.
           </p>
         </div>
 
@@ -203,7 +203,9 @@ export default function RekapLevel2Page() {
         </div>
 
         <div className="p-4 rounded-xl bg-cyan-950/40 border border-cyan-800/80 shadow">
-          <p className="text-[11px] uppercase font-semibold tracking-wider text-cyan-300">3. Misi Alas (8 Pos)</p>
+          <p className="text-[11px] uppercase font-semibold tracking-wider text-cyan-300">
+            3. Misi Alas ({LEVEL2_MISSIONS.length} Pos)
+          </p>
           <div className="flex items-baseline gap-1.5 mt-1">
             <span className="text-2xl sm:text-3xl font-extrabold font-serif text-cyan-300">
               {completedMisiCount}
@@ -229,7 +231,7 @@ export default function RekapLevel2Page() {
           { id: "semua", label: "Kabeh Rekap" },
           { id: "perawatan", label: "🌿 1. Perawatan Herbal" },
           { id: "nanjak", label: "🪶 2. Tugas Nulis Nanjak" },
-          { id: "misi", label: "🗺️ 3. Misi Alas (8 Pos)" },
+          { id: "misi", label: `🗺️ 3. Misi Alas (${LEVEL2_MISSIONS.length} Pos)` },
           { id: "gladhen", label: "🌲 4. Gladhen Nulis Akhir" },
         ].map((tab) => (
           <button

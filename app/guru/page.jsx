@@ -219,7 +219,7 @@ export default function GuruDashboardPage() {
                 Rekap Level 2 Lengkap (Perawatan, Misi Alas &amp; Nulis)
               </h3>
               <p className="text-xs text-stone-300 mt-1 leading-relaxed">
-                Perawatan Herbal, Tugas Nulis Nanjak, 8 Pos Misi Alas, lan Gladhen Nulis Akhir.
+                Perawatan Herbal, Tugas Nulis Nanjak, {LEVEL2_MISSIONS.length} Pos Misi Alas, lan Gladhen Nulis Akhir.
               </p>
               <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2 text-[11px]">
                 <div className="px-2.5 py-1 rounded bg-stone-950/70 border border-emerald-800/60 text-emerald-300">
@@ -229,7 +229,7 @@ export default function GuruDashboardPage() {
                   Nanjak: <strong>{loading ? "-" : stats.lv2NanjakDone}</strong>
                 </div>
                 <div className="px-2.5 py-1 rounded bg-stone-950/70 border border-cyan-800/60 text-cyan-300">
-                  8 Pos Alas: <strong>{loading ? "-" : stats.lv2MisiDone}</strong>
+                  {LEVEL2_MISSIONS.length} Pos Alas: <strong>{loading ? "-" : stats.lv2MisiDone}</strong>
                 </div>
                 <div className="px-2.5 py-1 rounded bg-stone-950/70 border border-teal-800/60 text-teal-300">
                   Gladhen: <strong>{loading ? "-" : stats.lv2GladhenDone}</strong>
