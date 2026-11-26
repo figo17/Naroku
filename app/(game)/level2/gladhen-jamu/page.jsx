@@ -23,6 +23,7 @@ export default function Level2GladhenJamuPage() {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/grojogan');
     async function loadData() {
       try {
         setLoading(true);
@@ -221,10 +222,10 @@ export default function Level2GladhenJamuPage() {
         {answer?.trim() && (
           <div className="absolute bottom-2.5 right-4 z-30">
             <Link
-              href="/peta"
+              href="/level2/grojogan"
               className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-yellow-500/90 hover:bg-yellow-400 border border-yellow-300 text-stone-950 text-[10px] sm:text-xs font-black shadow-lg active:scale-95 transition-all"
             >
-              <span>🗺️ Menyang Peta</span>
+              <span>🌊 Lanjut Adus ing Air Terjun</span>
               <span>➡</span>
             </Link>
           </div>
@@ -269,10 +270,10 @@ export default function Level2GladhenJamuPage() {
                 Deleng Tulisan
               </button>
               <Link
-                href="/peta"
+                href="/level2/grojogan"
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>🗺️</span> Rampung Level 2 &amp; Menyang Peta →
+                <span>🌊</span> Lanjut Adus ing Air Terjun →
               </Link>
             </div>
           </div>
