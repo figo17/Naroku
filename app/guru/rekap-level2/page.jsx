@@ -260,13 +260,20 @@ export default function RekapLevel2Page() {
 
                       {/* Tugas Nulis Column */}
                       {(activeTab === "semua" || activeTab === "nulis") && (
-                        <td className="py-3 px-4 max-w-xs">
+                        <td className="py-3 px-4 max-w-xs space-y-1.5">
                           {hasNanjakAnswer ? (
                             <p className="text-xs text-stone-200 line-clamp-2 italic font-serif bg-stone-950/60 p-2 rounded border border-stone-800">
+                              <span className="text-yellow-400 not-italic font-bold">Nanjak: </span>
                               &ldquo;{nAns.answer}&rdquo;
                             </p>
                           ) : (
-                            <span className="text-stone-500 text-xs italic">Belum mengisi tulisan</span>
+                            <span className="text-stone-500 text-xs italic block">Nanjak: durung diisi</span>
+                          )}
+                          {nAns?.gladhen_answer?.trim() && (
+                            <p className="text-xs text-emerald-200 line-clamp-2 italic font-serif bg-emerald-950/30 p-2 rounded border border-emerald-800/60">
+                              <span className="text-emerald-400 not-italic font-bold">Gladhen Alas: </span>
+                              &ldquo;{nAns.gladhen_answer}&rdquo;
+                            </p>
                           )}
                         </td>
                       )}
@@ -387,6 +394,23 @@ export default function RekapLevel2Page() {
                   <p className="text-[10px] text-stone-500 text-right">
                     Disimpen: {new Date(selectedStudent.nanjak.updated_at).toLocaleString("id-ID")}
                   </p>
+                )}
+              </div>
+
+              {/* Bagian 3: Gladhen Nulis Akhir Level 2 (Ngumbara ing Alas) */}
+              <div className="p-4 rounded-xl bg-stone-950/80 border border-emerald-500/30 space-y-2">
+                <h4 className="font-bold text-emerald-400 text-xs uppercase flex items-center gap-1.5">
+                  <span>🌲</span> Bagian 3: Gladhen Nulis Akhir (Ngumbara ing Alas)
+                </h4>
+                <p className="text-[11px] text-stone-400 italic">
+                  &ldquo;Saka lelampahanmu ngumbara ing alas, tulisen kanthi 2-3 ukara bab apa sing kokalami sajrone nelusuri alas iku!&rdquo;
+                </p>
+                {selectedStudent.nanjak?.gladhen_answer?.trim() ? (
+                  <div className="p-3.5 rounded-xl bg-emerald-950/25 border border-emerald-500/50 text-stone-100 text-xs sm:text-sm font-serif leading-relaxed">
+                    &ldquo;{selectedStudent.nanjak.gladhen_answer}&rdquo;
+                  </div>
+                ) : (
+                  <p className="text-stone-500 text-xs italic">Murid durung ngisi Gladhen Nulis Akhir.</p>
                 )}
               </div>
             </div>

@@ -464,10 +464,10 @@ export default function Level2LabirinPage() {
                   Baleni 🔄
                 </button>
                 <Link
-                  href="/peta"
+                  href="/level2/gladhen"
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
                 >
-                  🗺️ Lanjut menyang Peta →
+                  🪶 Lanjut menyang Gladhen Nulis →
                 </Link>
               </div>
             </div>
