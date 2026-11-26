@@ -125,7 +125,7 @@ export default function Level2GladhenAkhirPage() {
     return (
       <div className="w-screen h-screen bg-[#04120a] flex flex-col items-center justify-center text-yellow-400 gap-3 font-sans select-none">
         <div className="w-10 h-10 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm tracking-wide text-amber-200">Mbukak Gladhen Nulis Pungkasan Level 2...</p>
+        <p className="text-sm tracking-wide text-amber-200">Mbukak Gladhen Nulis Lv 2 - Mucuk...</p>
       </div>
     );
   }
@@ -211,18 +211,18 @@ export default function Level2GladhenAkhirPage() {
         {/* Navigasi Pojok Bawah */}
         <div className="absolute bottom-2.5 left-4 right-4 z-30 flex items-center justify-between pointer-events-none">
           <Link
-            href="/level2/padhepokan"
+            href="/level2/labirin"
             className="pointer-events-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-stone-950/85 hover:bg-stone-900 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold backdrop-blur-md shadow-md active:scale-95 transition-all"
           >
-            <span>⬅</span> Bali menyang Padhepokan
+            <span>⬅</span> Bali menyang Labirin
           </Link>
 
           {answer?.trim() && (
             <Link
-              href="/peta"
+              href="/level2/padhepokan"
               className="pointer-events-auto flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-yellow-500/90 hover:bg-yellow-400 border border-yellow-300 text-stone-950 text-[10px] sm:text-xs font-black shadow-lg active:scale-95 transition-all"
             >
-              <span>🗺️ Menyang Peta Petualangan</span>
+              <span>🏯 Lanjut menyang Padhepokan</span>
               <span>➡</span>
             </Link>
           )}
@@ -253,10 +253,10 @@ export default function Level2GladhenAkhirPage() {
               🎉
             </div>
             <h3 className="mt-4 text-xl font-serif font-black text-yellow-400">
-              Level 2 Kasil Dirampungake!
+              Wangsulan Gladhen Kasil Disimpen!
             </h3>
             <p className="mt-2 text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Matur nuwun! Cathetan lelampahanmu ngumbara ing alas Gunung Wilis wis kasil disimpen ing database guru.
+              Matur nuwun! Cathetan lelampahanmu ing alas Gunung Wilis wis disimpen ing database guru. Saiki ayo nerusake laku menyang Padhepokan!
             </p>
             <div className="mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
               <button
@@ -267,10 +267,10 @@ export default function Level2GladhenAkhirPage() {
                 Deleng Tulisan
               </button>
               <Link
-                href="/peta"
+                href="/level2/padhepokan"
                 className="w-full sm:w-auto px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg active:scale-95 transition-all flex items-center justify-center gap-1.5"
               >
-                <span>🗺️</span> Bali menyang Peta Petualangan →
+                <span>🏯</span> Lanjut menyang Padhepokan →
               </Link>
             </div>
           </div>

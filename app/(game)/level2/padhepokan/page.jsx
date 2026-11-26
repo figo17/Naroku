@@ -225,10 +225,10 @@ export default function Level2PadhepokanPage() {
         {/* Navigasi Pojok Kiri Atas */}
         <div className="absolute top-3 left-4 z-40 flex gap-2">
           <Link
-            href="/level2/labirin"
+            href="/level2/gladhen"
             className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold"
           >
-            ⬅ Labirin
+            ⬅ Gladhen Nulis
           </Link>
           <Link
             href="/peta"
@@ -313,10 +313,10 @@ export default function Level2PadhepokanPage() {
                   Baleni 🔄
                 </button>
                 <Link
-                  href="/level2/gladhen"
+                  href="/peta"
                   className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
                 >
-                  🪶 Lanjut menyang Gladhen Nulis →
+                  🗺️ Rampung Level 2 &amp; Menyang Peta →
                 </Link>
               </div>
             </div>
