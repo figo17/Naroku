@@ -76,6 +76,7 @@ export default function RekapLevel2Page() {
     (r) => Array.isArray(r.completed_missions) && r.completed_missions.length >= LEVEL2_MISSIONS.length
   ).length;
   const completedGladhenCount = nanjakAnswers.filter((a) => a.gladhen_answer?.trim()).length;
+  const completedMudhunCount = nanjakAnswers.filter((a) => a.mudhun_answer?.trim()).length;
 
   const getItemLabel = (id) => {
     const it = treatmentItems?.find((t) => t.id === id);
@@ -93,7 +94,8 @@ export default function RekapLevel2Page() {
       "Tugas Nulis 1 (Nanjak)",
       "Misi Alas Selesai",
       "Daftar Misi Alas",
-      "Gladhen Nulis Akhir (Alas)",
+      "Gladhen Nulis Mucuk (Alas)",
+      "Gladhen Nulis Mudhun (Jamu)",
       "Status Level 2",
     ];
 
@@ -110,7 +112,8 @@ export default function RekapLevel2Page() {
         Boolean(oRes?.is_completed) &&
         Boolean(nAns?.answer?.trim()) &&
         missions.length >= LEVEL2_MISSIONS.length &&
-        Boolean(nAns?.gladhen_answer?.trim());
+        Boolean(nAns?.gladhen_answer?.trim()) &&
+        Boolean(nAns?.mudhun_answer?.trim());
 
       const esc = (v) => `"${String(v || "").replace(/"/g, '""')}"`;
       return [
@@ -123,6 +126,7 @@ export default function RekapLevel2Page() {
         esc(`${missions.length}/${LEVEL2_MISSIONS.length}`),
         esc(missionLabels || "-"),
         esc(nAns?.gladhen_answer || "-"),
+        esc(nAns?.mudhun_answer || "-"),
         esc(isFull ? "Lengkap" : oRes || nAns ? "Sebagian" : "Durung"),
       ];
     });
@@ -215,12 +219,12 @@ export default function RekapLevel2Page() {
         </div>
 
         <div className="p-4 rounded-xl bg-teal-950/40 border border-teal-800/80 shadow col-span-2 lg:col-span-1">
-          <p className="text-[11px] uppercase font-semibold tracking-wider text-teal-300">4. Gladhen Akhir</p>
+          <p className="text-[11px] uppercase font-semibold tracking-wider text-teal-300">4. Gladhen (Mucuk &amp; Jamu)</p>
           <div className="flex items-baseline gap-1.5 mt-1">
-            <span className="text-2xl sm:text-3xl font-extrabold font-serif text-teal-300">
-              {completedGladhenCount}
+            <span className="text-xl sm:text-2xl font-extrabold font-serif text-teal-300">
+              {completedGladhenCount} / {completedMudhunCount}
             </span>
-            <span className="text-xs text-stone-400">/ {totalStudents}</span>
+            <span className="text-xs text-stone-400">saka {totalStudents}</span>
           </div>
         </div>
       </div>
@@ -297,10 +301,12 @@ export default function RekapLevel2Page() {
                   const isOrientasiDone = Boolean(oRes?.is_completed);
                   const hasNanjak = Boolean(nAns?.answer?.trim());
                   const hasGladhen = Boolean(nAns?.gladhen_answer?.trim());
+                  const hasMudhun = Boolean(nAns?.mudhun_answer?.trim());
                   const isMisiDone = missions.length >= LEVEL2_MISSIONS.length;
 
-                  const doneParts = [isOrientasiDone, hasNanjak, isMisiDone, hasGladhen].filter(Boolean).length;
-                  const anyProgress = doneParts > 0 || missions.length > 0 || rkItems.length + rrItems.length > 0;
+                  const doneParts = [isOrientasiDone, hasNanjak, isMisiDone, hasGladhen && hasMudhun].filter(Boolean).length;
+                  const anyProgress =
+                    doneParts > 0 || missions.length > 0 || rkItems.length + rrItems.length > 0 || hasGladhen || hasMudhun;
 
                   return (
                     <tr key={stu.id} className="hover:bg-stone-800/40 transition align-top">
@@ -376,15 +382,22 @@ export default function RekapLevel2Page() {
                         </td>
                       )}
 
-                      {/* 4. Gladhen Akhir */}
+                      {/* 4. Gladhen Nulis (Mucuk & Mudhun Jamu) */}
                       {(activeTab === "semua" || activeTab === "gladhen") && (
-                        <td className="py-3 px-4 max-w-[230px]">
+                        <td className="py-3 px-4 max-w-[250px] space-y-1.5">
                           {hasGladhen ? (
                             <p className="text-xs text-emerald-200 line-clamp-2 italic font-serif bg-emerald-950/30 p-2 rounded border border-emerald-800/60">
-                              &ldquo;{nAns.gladhen_answer}&rdquo;
+                              <strong className="not-italic text-emerald-400">Mucuk:</strong> &ldquo;{nAns.gladhen_answer}&rdquo;
                             </p>
                           ) : (
-                            <span className="text-stone-500 text-xs italic">Durung ngisi</span>
+                            <p className="text-stone-500 text-[11px] italic">Mucuk: Durung</p>
+                          )}
+                          {hasMudhun ? (
+                            <p className="text-xs text-lime-200 line-clamp-2 italic font-serif bg-lime-950/30 p-2 rounded border border-lime-800/60">
+                              <strong className="not-italic text-lime-400">Jamu:</strong> &ldquo;{nAns.mudhun_answer}&rdquo;
+                            </p>
+                          ) : (
+                            <p className="text-stone-500 text-[11px] italic">Jamu: Durung</p>
                           )}
                         </td>
                       )}
@@ -533,10 +546,10 @@ export default function RekapLevel2Page() {
                 </div>
               </div>
 
-              {/* 4. Gladhen Nulis Akhir */}
+              {/* 4. Gladhen Nulis Mucuk */}
               <div className="p-4 rounded-xl bg-stone-950/80 border border-emerald-500/30 space-y-2">
                 <h4 className="font-bold text-emerald-400 text-xs uppercase flex items-center gap-1.5">
-                  <span>🌲</span> 4. Gladhen Nulis Akhir Level 2 (Ngumbara ing Alas)
+                  <span>🌲</span> 4. Gladhen Nulis Mucuk (Ngumbara ing Alas)
                 </h4>
                 <p className="text-[11px] text-stone-400 italic">
                   &ldquo;Saka lelampahanmu ngumbara ing alas, tulisen kanthi 2-3 ukara bab apa sing kokalami sajrone nelusuri alas iku!&rdquo;
@@ -546,7 +559,24 @@ export default function RekapLevel2Page() {
                     {selectedStudent.nanjak.gladhen_answer}
                   </div>
                 ) : (
-                  <p className="text-stone-500 text-xs italic">Murid durung ngisi Gladhen Nulis Akhir.</p>
+                  <p className="text-stone-500 text-xs italic">Murid durung ngisi Gladhen Nulis Mucuk.</p>
+                )}
+              </div>
+
+              {/* 5. Gladhen Nulis Mudhun (Gegodhongan Jamu) */}
+              <div className="p-4 rounded-xl bg-stone-950/80 border border-lime-500/30 space-y-2">
+                <h4 className="font-bold text-lime-400 text-xs uppercase flex items-center gap-1.5">
+                  <span>🍃</span> 5. Gladhen Nulis Mudhun (Ngumpulake Godhong Jamu)
+                </h4>
+                <p className="text-[11px] text-stone-400 italic">
+                  &ldquo;Saka kegiatan ngumpulake godhong kanggo ramuan, tulisen 2–3 ukara bab apa sing kolakoni lan godhong apa wae sing koktemokake!&rdquo;
+                </p>
+                {selectedStudent.nanjak?.mudhun_answer?.trim() ? (
+                  <div className="p-3.5 rounded-xl bg-[#fcf6e5] text-amber-950 border border-lime-700/40 text-xs sm:text-sm font-serif leading-relaxed whitespace-pre-wrap">
+                    {selectedStudent.nanjak.mudhun_answer}
+                  </div>
+                ) : (
+                  <p className="text-stone-500 text-xs italic">Murid durung ngisi Gladhen Nulis Mudhun (Jamu).</p>
                 )}
                 {selectedStudent.nanjak?.updated_at && (
                   <p className="text-[10px] text-stone-500 text-right">
