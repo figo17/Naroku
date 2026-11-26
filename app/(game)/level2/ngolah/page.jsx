@@ -82,6 +82,7 @@ export default function Level2NgolahJamuPage() {
   const [showDoneModal, setShowDoneModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/ngunjuk');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -163,10 +164,12 @@ export default function Level2NgolahJamuPage() {
 
       if (isAllDone) {
         recordLevel2Mission(supabase, 'ngolah');
-        setTimeout(() => setShowDoneModal(true), 750);
+        setTimeout(() => {
+          router.push('/level2/ngunjuk');
+        }, 850);
       }
     },
-    [completedSteps, playStepTone, supabase]
+    [completedSteps, playStepTone, router, supabase]
   );
 
   const handleAdvanceNextStep = useCallback(() => {
@@ -174,9 +177,9 @@ export default function Level2NgolahJamuPage() {
       handleTriggerStep(NGOLAH_STEPS[completedSteps.length]);
     } else {
       recordLevel2Mission(supabase, 'ngolah');
-      setShowDoneModal(true);
+      router.push('/level2/ngunjuk');
     }
-  }, [completedSteps, handleTriggerStep, supabase]);
+  }, [completedSteps, handleTriggerStep, router, supabase]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -414,10 +417,10 @@ export default function Level2NgolahJamuPage() {
                 Deleng Adegan
               </button>
               <Link
-                href="/peta"
+                href="/level2/ngunjuk"
                 className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
               >
-                🗺️ Rampung Level 2 &amp; Menyang Peta →
+                🥣 Lanjut Nglunjuk Jamu →
               </Link>
             </div>
           </div>
