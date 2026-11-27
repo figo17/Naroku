@@ -116,7 +116,7 @@ export default function SimpananJawabanView({ onClose, onInsertText }) {
     {
       id: 'lv3_narasi',
       title: 'Lv 3 – Narasi Grojogan Rara Kuning',
-      thumb: '/assets/level2/screen_adus_air_terjun.jpg',
+      thumb: '/assets/level2/screen_grojogan_clean.jpg',
       text: lv3Data?.narasi || '',
       table: 'level3_nulis_answers',
       column: 'narasi',

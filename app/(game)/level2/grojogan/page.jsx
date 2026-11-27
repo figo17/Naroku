@@ -11,9 +11,12 @@ export default function Level2AdusAirTerjunPage() {
   const router = useRouter();
   const supabase = createClient();
   const audioCtxRef = useRef(null);
+  const splashBoostTimerRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [waterFrame, setWaterFrame] = useState(0); // 0..4 (5-frame animasi putri dolanan banyu grojogan)
+  const [fastSplash, setFastSplash] = useState(false);
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const navLockRef = useRef(false);
@@ -27,6 +30,21 @@ export default function Level2AdusAirTerjunPage() {
       })
       .finally(() => setLoading(false));
   }, [router, supabase]);
+
+  // Loop Animasi 5-Frame Putri Rara Kuning & Rara Runting Dolanan Banyu Grojogan
+  useEffect(() => {
+    const intervalMs = fastSplash ? 115 : 190;
+    const timer = setInterval(() => {
+      setWaterFrame((prev) => (prev + 1) % 5);
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [fastSplash]);
+
+  useEffect(() => {
+    return () => {
+      if (splashBoostTimerRef.current) clearTimeout(splashBoostTimerRef.current);
+    };
+  }, []);
 
   const playWaterfallChime = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -56,6 +74,13 @@ export default function Level2AdusAirTerjunPage() {
     }
   }, []);
 
+  const handleTriggerSplash = useCallback(() => {
+    setFastSplash(true);
+    playWaterfallChime();
+    if (splashBoostTimerRef.current) clearTimeout(splashBoostTimerRef.current);
+    splashBoostTimerRef.current = setTimeout(() => setFastSplash(false), 1200);
+  }, [playWaterfallChime]);
+
   const handleBanjur = useCallback(() => {
     if (navLockRef.current) return;
     navLockRef.current = true;
@@ -80,22 +105,59 @@ export default function Level2AdusAirTerjunPage() {
     return (
       <div className="w-screen h-screen bg-[#061712] flex flex-col items-center justify-center text-yellow-400 gap-3 font-sans select-none">
         <div className="w-10 h-10 border-4 border-yellow-500 border-t-transparent rounded-full animate-spin" />
-        <p className="text-sm tracking-wide text-amber-200">Mbukak Adegan Lv 2 – Adus ing Air Terjun...</p>
+        <p className="text-sm tracking-wide text-amber-200">Mbukak Adegan Lv 2 – Adus ing Grojogan...</p>
       </div>
     );
   }
 
+  const waterFramePct = (waterFrame / 4) * 100;
+
   return (
     <div className="relative w-screen h-screen bg-[#061712] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
+      {/* Preload Spritesheet 5-Frame Putri Dolanan Banyu */}
+      <div className="hidden" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/level2/grojogan-water-sheet.png" alt="" />
+      </div>
+
       {/* Container Utama 16:9 (1024 x 576) */}
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl select-none">
+        {/* LAYER 1: Background Bersih Grojogan Tanpa Putri */}
         <Image
-          src="/assets/level2/screen_adus_air_terjun.jpg"
-          alt="Lv 2 – Adus ing Air Terjun Rara Kuning"
+          src="/assets/level2/screen_grojogan_clean.jpg"
+          alt="Lv 2 – Adus ing Grojogan Rara Kuning"
           fill
           priority
           sizes="100vw"
-          className="object-contain object-center"
+          className="object-contain object-center z-0"
+        />
+
+        {/* LAYER 2: Animasi Sprite 5-Frame Rara Kuning & Rara Runting Main Air */}
+        <div
+          onClick={handleTriggerSplash}
+          title="Klik kanggo nyipratake banyu suci grojogan!"
+          aria-label="Rara Kuning lan Rara Runting dolanan banyu ing grojogan"
+          className="absolute z-10 cursor-pointer"
+          style={{
+            left: '24.2%',
+            top: '27.4%',
+            width: '65.2%',
+            height: '61.2%',
+            backgroundImage: "url('/assets/level2/grojogan-water-sheet.png')",
+            backgroundSize: '500% 100%',
+            backgroundPosition: `${waterFramePct}% 0%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+
+        {/* LAYER 3: Masking Watu Ngarep, Kembang Jepun & Tombol Banjur */}
+        <Image
+          src="/assets/level2/screen_grojogan_fg.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-contain object-center pointer-events-none z-15"
         />
 
         {/* ========================================================
@@ -146,7 +208,6 @@ export default function Level2AdusAirTerjunPage() {
 
         {/* ========================================================
             TOMBOL TRANSPARAN PRESISI ING NDUWUR TOMBOL "▶ BANJUR"
-            (x: 816..988, y: 505..544 pada 1024x576)
            ======================================================== */}
         <button
           type="button"
@@ -158,7 +219,7 @@ export default function Level2AdusAirTerjunPage() {
           <span className="sr-only">Banjur</span>
         </button>
 
-        {/* Navigasi Cilik Bali menyang Gladhen Nulis Jamu (Tengah Ndhuwur Ngisor Banner) */}
+        {/* Navigasi Cilik Bali menyang Gladhen Nulis Jamu */}
         <div className="absolute top-[9.4%] right-3 z-30">
           <Link
             href="/level2/gladhen-jamu"
@@ -178,10 +239,10 @@ export default function Level2AdusAirTerjunPage() {
             </h3>
             <div className="space-y-3 text-xs sm:text-sm text-stone-300 font-serif leading-relaxed">
               <p>
-                Saliyane ngombe jamu racikan Resi Darmo saka godhong Tapak Liman, Sirih, Sambiloto, lan Mindi, Rara Kuning lan Rara Runting uga tansah adus reresik awak ing <strong>Air Terjun Rara Kuning</strong> ing lereng Gunung Wilis, Nganjuk.
+                Saliyane ngombe jamu racikan Resi Darmo, Rara Kuning lan Rara Runting uga kerep adus reresik awak ing grojogan suci ing lereng Gunung Wilis, Nganjuk.
               </p>
               <p className="p-3 rounded-xl bg-cyan-950/45 border border-cyan-500/35 text-cyan-100">
-                Banyu grojogan sing bening lan adhem ing kono kapracaya nduwèni khasiat nyegeraké badan lan mbiyantu marasaké penyakit kulit sarta lelara sing disandhang para putri.
+                Banyu ing kono dipercaya nduwèni khasiat nyegeraké awak lan mbiyantu marasaké penyakit kulit sarta lelara sing disandhang para putri.
               </p>
             </div>
             <div className="flex justify-between items-center pt-1">
@@ -215,7 +276,7 @@ export default function Level2AdusAirTerjunPage() {
               <span>❓</span> Pituduh Pasinaon
             </h3>
             <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Wacanen <strong>Katrangan Crita</strong> ing kothak sisih kiwa babagan adus usada ing Air Terjun Rara Kuning, banjur klik tombol kuning <strong>▶ Banjur</strong> ing pojok tengen ngisor kanggo nglajengake crita!
+              Wacanen <strong>Katrangan Crita</strong> ing kothak sisih kiwa lan gatekna Rara Kuning sarta Rara Runting sing lagi ciblon ing grojogan, banjur klik tombol kuning <strong>▶ Banjur</strong> ing pojok tengen ngisor kanggo nglajengake crita!
             </p>
             <div className="flex justify-end pt-1">
               <button
