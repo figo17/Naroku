@@ -10,26 +10,30 @@ import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
 const START_POS = { x: 24, y: 88 };
-const WALK_MS = 2600;
-const HIDE_MS = 3000;
+// Diperlambat supaya macan mlaku alon-alon nyebrang dalan alas (6.2 detik)
+const WALK_MS = 6200;
+const HIDE_MS = 4000;
 const CYCLE_MS = (WALK_MS + HIDE_MS) * 2;
+const FRAME_MS = 140; // 8-frame walk cycle alus
 
 function getTigerState(elapsedMs) {
   const t = elapsedMs % CYCLE_MS;
+  const frame = Math.floor(elapsedMs / FRAME_MS) % 8;
+
   if (t < WALK_MS) {
     const p = t / WALK_MS;
-    return { visible: true, dir: 'right', x: -14 + p * 128, remainSafeSec: 0 };
+    return { visible: true, dir: 'right', x: -14 + p * 128, frame, remainSafeSec: 0 };
   }
   if (t < WALK_MS + HIDE_MS) {
     const rem = (WALK_MS + HIDE_MS - t) / 1000;
-    return { visible: false, dir: 'left', x: 114, remainSafeSec: rem };
+    return { visible: false, dir: 'left', x: 114, frame: 0, remainSafeSec: rem };
   }
   if (t < WALK_MS * 2 + HIDE_MS) {
     const p = (t - (WALK_MS + HIDE_MS)) / WALK_MS;
-    return { visible: true, dir: 'left', x: 114 - p * 128, remainSafeSec: 0 };
+    return { visible: true, dir: 'left', x: 114 - p * 128, frame, remainSafeSec: 0 };
   }
   const rem = (CYCLE_MS - t) / 1000;
-  return { visible: false, dir: 'right', x: -14, remainSafeSec: rem };
+  return { visible: false, dir: 'right', x: -14, frame: 0, remainSafeSec: rem };
 }
 
 export default function Level2MacanPage() {
@@ -48,12 +52,18 @@ export default function Level2MacanPage() {
   const [facingLeft, setFacingLeft] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
 
-  const [tiger, setTiger] = useState({ visible: true, dir: 'right', x: 58, remainSafeSec: 0 });
+  const [tiger, setTiger] = useState({
+    visible: true,
+    dir: 'right',
+    x: 42,
+    frame: 0,
+    remainSafeSec: 0,
+  });
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
     router.prefetch('/level2/pring');
-    startTimeRef.current = performance.now() - Math.floor(WALK_MS * 0.55);
+    startTimeRef.current = performance.now() - Math.floor(WALK_MS * 0.42);
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -86,8 +96,10 @@ export default function Level2MacanPage() {
         osc.frequency.exponentialRampToValueAtTime(55, now + 0.35);
         gain.gain.setValueAtTime(0.3, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.38);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.4);
       } else if (type === 'victory') {
         [523.25, 659.25, 783.99, 1046.5].forEach((freq, i) => {
           const osc = ctx.createOscillator();
@@ -97,8 +109,10 @@ export default function Level2MacanPage() {
           osc.frequency.setValueAtTime(freq, s);
           gain.gain.setValueAtTime(0.24, s);
           gain.gain.exponentialRampToValueAtTime(0.001, s + 0.4);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(s); osc.stop(s + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(s);
+          osc.stop(s + 0.45);
         });
       }
     } catch {
@@ -145,8 +159,8 @@ export default function Level2MacanPage() {
         setTiger(st);
 
         const p = charPosRef.current;
-        const inTigerLane = p.y >= 48 && p.y <= 67;
-        const hitX = st.visible && Math.abs(st.x - p.x) < 16;
+        const inTigerLane = p.y >= 49 && p.y <= 66;
+        const hitX = st.visible && Math.abs(st.x - p.x) < 12.5;
         if (inTigerLane && hitX && now - hitCooldownRef.current > 900) {
           hitCooldownRef.current = now;
           playSound('roar');
@@ -154,7 +168,7 @@ export default function Level2MacanPage() {
           setCharPos(START_POS);
           setToast({
             type: 'warn',
-            text: '⚠️ Ketemon Macan! Liwat pas macane ngilang menyang alas!',
+            text: '⚠️ Ketemon Macan! Enteni macane mlaku mlebu alas dhisik!',
           });
         }
       }
@@ -213,19 +227,15 @@ export default function Level2MacanPage() {
   }
 
   const depthScale = Math.max(0.62, Math.min(1.05, 0.62 + ((charPos.y - 36) / 56) * 0.43));
+  const tigerFramePct = (tiger.frame / 7) * 100;
 
   return (
     <div className="relative w-screen h-screen bg-[#041008] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
-      <style>{`
-        @keyframes macanStride {
-          0%,100% { transform: translateY(0px) scaleX(1) scaleY(1); }
-          25% { transform: translateY(-4px) scaleX(1.03) scaleY(0.97); }
-          50% { transform: translateY(0px) scaleX(0.99) scaleY(1.02); }
-          75% { transform: translateY(-4px) scaleX(1.02) scaleY(0.98); }
-        }
-        .anim-macan { animation: macanStride 0.48s ease-in-out infinite; }
-        .pixel-sprite { image-rendering: pixelated; }
-      `}</style>
+      {/* Preload Spritesheet 8-Frame Macan Mlaku */}
+      <div className="hidden" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/level2/macan-walk-sheet.png" alt="" />
+      </div>
 
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
         {/* Latar Polos Tanpa Karakter Cewek Bawaan */}
@@ -280,23 +290,36 @@ export default function Level2MacanPage() {
           }`}
         />
 
+        {/* SPRITE ANIMASI 8-FRAME MACAN MLAKU ALON */}
         {tiger.visible && (
           <div
             className="absolute z-20 pointer-events-none"
             style={{
               left: `${tiger.x}%`,
-              top: '56%',
-              transform: `translate(-50%, -85%) scaleX(${tiger.dir === 'left' ? -1 : 1})`,
+              top: '57.5%',
+              transform: `translate(-50%, -92%) scaleX(${tiger.dir === 'left' ? -1 : 1})`,
             }}
           >
-            <div className="anim-macan relative" style={{ width: '24vw', maxWidth: 270, minWidth: 130, aspectRatio: '286/124' }}>
-              <div className="absolute -bottom-1 left-[12%] right-[12%] h-3 rounded-full bg-black/55 blur-[3px]" />
-              <Image
-                src="/assets/level2/item-macan.png"
-                alt="Macan Alas"
-                fill
-                sizes="270px"
-                className="object-contain pixel-sprite drop-shadow-[0_10px_14px_rgba(0,0,0,0.85)]"
+            <div
+              className="relative"
+              style={{
+                width: '18vw',
+                maxWidth: 205,
+                minWidth: 105,
+                aspectRatio: '131 / 85',
+              }}
+            >
+              <div className="absolute bottom-0.5 left-[14%] right-[12%] h-2.5 rounded-full bg-black/55 blur-[3px]" />
+              <div
+                aria-label="Macan Alas Mlaku"
+                className="relative w-full h-full"
+                style={{
+                  backgroundImage: "url('/assets/level2/macan-walk-sheet.png')",
+                  backgroundSize: '800% 100%',
+                  backgroundPosition: `${tigerFramePct}% 0%`,
+                  backgroundRepeat: 'no-repeat',
+                  filter: 'drop-shadow(0 8px 10px rgba(0,0,0,0.75))',
+                }}
               />
             </div>
           </div>
