@@ -65,6 +65,7 @@ export default function Level3PiwulangPage() {
   const [showMisiModal, setShowMisiModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/pengembang');
     router.prefetch('/peta');
     router.prefetch('/level3/apresiasi');
 
@@ -150,8 +151,8 @@ export default function Level3PiwulangPage() {
 
   const handleRampung = useCallback(() => {
     playChime(true);
-    setShowFinishModal(true);
-  }, [playChime]);
+    router.push('/pengembang');
+  }, [playChime, router]);
 
   if (loading) {
     return (

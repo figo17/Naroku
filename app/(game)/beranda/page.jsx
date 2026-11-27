@@ -188,6 +188,10 @@ export default function StudentHomePage() {
           <Link href="/cptp" className="hover:text-yellow-400 flex items-center gap-1.5 transition-colors">
             <span>📖</span> Capaian Pasinaon (CP/TP)
           </Link>
+          <span className="text-emerald-600">•</span>
+          <Link href="/pengembang" className="hover:text-yellow-400 flex items-center gap-1.5 transition-colors">
+            <span>👩‍💻</span> Profil Pengembang
+          </Link>
         </div>
       </main>
 

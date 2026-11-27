@@ -51,6 +51,15 @@ const MATERI_SLIDES = [
     hasNavbar: false,
     hasBanjurButton: true,
   },
+  {
+    id: 6,
+    title: 'Profil Pengembang – Melani Widyah Dwi Nurreira',
+    src: '/assets/materi/slide-6-profil-pengembang.jpg',
+    width: 1024,
+    height: 768,
+    hasNavbar: false,
+    hasBaliButton: true,
+  },
 ];
 
 export default function MateriPage() {
@@ -228,10 +237,22 @@ export default function MateriPage() {
             <button
               type="button"
               onClick={handleNext}
-              title="Selesai menyang Peta Petualangan"
+              title="Lanjut menyang Profil Pengembang"
               className="absolute left-[83.59%] top-[86.33%] w-[12.89%] h-[7.03%] rounded-xl bg-transparent hover:bg-yellow-300/20 hover:ring-2 hover:ring-yellow-300 active:scale-95 transition-all cursor-pointer z-30"
             >
               <span className="sr-only">Banjur</span>
+            </button>
+          )}
+
+          {/* Hitbox Tombol "⬅ Bali" pada Slide 6 (Profil Pengembang) */}
+          {current.hasBaliButton && (
+            <button
+              type="button"
+              onClick={() => router.push('/beranda')}
+              title="Bali menyang Beranda"
+              className="absolute left-[88.8%] top-[1.4%] w-[8.8%] h-[4.8%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300 active:scale-95 transition-all cursor-pointer z-30"
+            >
+              <span className="sr-only">Bali</span>
             </button>
           )}
         </div>
