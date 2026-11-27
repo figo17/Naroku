@@ -46,6 +46,14 @@ export default function GameMainMenu() {
           className="absolute left-[29.8%] top-[1.2%] w-[4%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
         />
 
+        {/* Materi -> Modul Materi Crita Legenda */}
+        <Link
+          href="/materi"
+          title="Materi Crita Legenda"
+          aria-label="Materi"
+          className="absolute left-[34.3%] top-[1.2%] w-[4.6%] h-[8%] rounded-md bg-transparent hover:bg-yellow-400/15 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
         {/* CP/TP -> Capaian lan Tujuan Pasinaon */}
         <Link
           href="/cptp"

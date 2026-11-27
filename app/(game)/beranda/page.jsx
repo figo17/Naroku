@@ -80,13 +80,17 @@ export default function StudentHomePage() {
             Menu
           </Link>
           <span>›</span>
-          <span className="hover:text-yellow-400 transition-colors cursor-pointer">Materi</span>
+          <Link href="/materi" className="hover:text-yellow-400 transition-colors">
+            Materi
+          </Link>
           <span>›</span>
           <Link href="/cptp" className="hover:text-yellow-400 transition-colors">
             CP/TP
           </Link>
           <span>›</span>
-          <span className="hover:text-yellow-400 transition-colors cursor-pointer">Tokoh</span>
+          <Link href="/materi?slide=4" className="hover:text-yellow-400 transition-colors">
+            Tokoh
+          </Link>
           <span>›</span>
           <span className="hover:text-yellow-400 transition-colors cursor-pointer">Misi</span>
           <span>›</span>
@@ -172,7 +176,11 @@ export default function StudentHomePage() {
         </div>
 
         {/* Pintasan Tambahan Bawah */}
-        <div className="flex items-center gap-4 mt-8 sm:mt-12 text-xs font-semibold text-emerald-200/90 bg-black/60 backdrop-blur-md px-5 py-2 rounded-full border border-emerald-700/60 shadow">
+        <div className="flex flex-wrap items-center justify-center gap-4 mt-8 sm:mt-12 text-xs font-semibold text-emerald-200/90 bg-black/60 backdrop-blur-md px-5 py-2 rounded-full border border-emerald-700/60 shadow">
+          <Link href="/materi" className="hover:text-yellow-400 flex items-center gap-1.5 transition-colors">
+            <span>📚</span> Materi Crita
+          </Link>
+          <span className="text-emerald-600">•</span>
           <Link href="/profile" className="hover:text-yellow-400 flex items-center gap-1.5 transition-colors">
             <span>👤</span> Profil Murid
           </Link>

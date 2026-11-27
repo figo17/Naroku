@@ -85,6 +85,14 @@ export default function PetaPetualanganPage() {
           className="absolute left-[33%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
         />
 
+        {/* Hitbox: Materi -> Modul Materi Crita Legenda */}
+        <Link
+          href="/materi"
+          title="Bukak Materi Crita Legenda"
+          aria-label="Materi"
+          className="absolute left-[39.5%] top-[2%] w-[6%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 hover:ring-1 hover:ring-yellow-300/40 transition-all cursor-pointer z-30"
+        />
+
         {/* Hitbox: CP/TP -> Capaian & Tujuan Pasinaon */}
         <Link
           href="/cptp"

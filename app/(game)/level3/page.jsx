@@ -98,15 +98,12 @@ export default function Level3IntroPage() {
           className="absolute left-[32.2%] top-[1.5%] w-[5.2%] h-[5.5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
         />
 
-        {/* Materi -> Modal Ringkesan Crita */}
-        <button
-          type="button"
-          onClick={() => setShowMateriModal(true)}
-          title="Materi Cengkorongan Crita"
+        {/* Materi -> Halaman Materi */}
+        <Link
+          href="/materi"
+          title="Materi Crita Legenda"
           className="absolute left-[39.6%] top-[1.5%] w-[5.8%] h-[5.5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
-        >
-          <span className="sr-only">Materi</span>
-        </button>
+        />
 
         {/* CP/TP */}
         <Link

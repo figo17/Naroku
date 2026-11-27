@@ -381,6 +381,11 @@ export default function Level1OrientasiTokohPage() {
               className="absolute left-[28.5%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
             />
             <Link
+              href="/materi"
+              title="Materi Crita Legenda"
+              className="absolute left-[33.8%] top-[2%] w-[4.8%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"
+            />
+            <Link
               href="/cptp"
               title="Capaian lan Tujuan Pasinaon"
               className="absolute left-[39%] top-[2%] w-[5%] h-[5%] rounded-md bg-transparent hover:bg-yellow-400/10 cursor-pointer z-30"

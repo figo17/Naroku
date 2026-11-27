@@ -52,7 +52,7 @@ export default function CpTpPage() {
         <nav className="hidden lg:flex items-center gap-2 text-xs font-medium text-emerald-300/80">
           <Link href="/beranda" className="hover:text-yellow-400 transition-colors">Menu</Link>
           <span>›</span>
-          <span className="hover:text-yellow-400 transition-colors cursor-pointer">Materi</span>
+          <Link href="/materi" className="hover:text-yellow-400 transition-colors">Materi</Link>
           <span>›</span>
           <span className="text-yellow-400 font-bold border-b border-yellow-400 pb-0.5">CP/TP</span>
           <span>›</span>
@@ -99,7 +99,7 @@ export default function CpTpPage() {
 
             {/* Tombol Bali (Kembali) */}
             <Link
-              href="/"
+              href="/beranda"
               className="self-start sm:self-center px-6 py-2.5 rounded-full bg-gradient-to-r from-amber-400 to-yellow-500 hover:from-amber-300 hover:to-yellow-400 text-stone-950 font-bold text-sm shadow-lg hover:shadow-yellow-500/30 flex items-center gap-2 transition-all active:scale-95 border border-yellow-200"
             >
               <span>⬅</span> Bali
