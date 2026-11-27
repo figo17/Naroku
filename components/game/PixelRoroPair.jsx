@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 
 const PING_PONG = [0, 1, 2, 3, 4, 5, 4, 3, 2, 1];
+// Pergeseran alus tangan ngarep Rara Kuning ing frame 0..5 (%)
+const KUNING_HAND_DX = [0, 0.8, 1.8, 2.8, 1.8, 0.8];
 
 /**
  * Reusable 6-Frame Pixel Art Walk & Idle Pair (Putri Rara Kuning & Putri Rara Runting)
@@ -13,6 +15,7 @@ export default function PixelRoroPair({
   stepIndex,
   order = 'runting-first',
   heightCss = 'clamp(72px, 20vh, 142px)',
+  kuningHandItem = null,
   children,
 }) {
   const [autoStep, setAutoStep] = useState(0);
@@ -33,29 +36,52 @@ export default function PixelRoroPair({
   const runtingFrame = isWalking ? PING_PONG[(curStep + 2) % 10] : 0;
   const kuningPct = (kuningFrame / 5) * 100;
   const runtingPct = (runtingFrame / 5) * 100;
+  const handDx = KUNING_HAND_DX[kuningFrame] || 0;
 
   const kuningEl = (
-    <div
-      key="kuning"
-      aria-label="Putri Rara Kuning"
-      style={{
-        height: heightCss,
-        aspectRatio: '143 / 338',
-        backgroundImage: "url('/assets/level2/pixel-walk-kuning.png')",
-        backgroundSize: '600% 100%',
-        backgroundPosition: `${kuningPct}% 0%`,
-        backgroundRepeat: 'no-repeat',
-        imageRendering: 'pixelated',
-        filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
-      }}
-    />
+    <div key="kuning" className="relative inline-block">
+      {/* Piranti sing dicekel langsung ing tangan ngarep Rara Kuning (kapak, lsp.) */}
+      {kuningHandItem && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: `${86.5 + handDx}%`,
+            top: '65.5%',
+            width: '86%',
+            aspectRatio: '455 / 196',
+            transform: 'translate(-22%, -27%)',
+            zIndex: 1,
+          }}
+        >
+          {kuningHandItem}
+        </div>
+      )}
+
+      <div
+        aria-label="Putri Rara Kuning"
+        className="relative"
+        style={{
+          zIndex: 2,
+          height: heightCss,
+          aspectRatio: '143 / 338',
+          backgroundImage: "url('/assets/level2/pixel-walk-kuning.png')",
+          backgroundSize: '600% 100%',
+          backgroundPosition: `${kuningPct}% 0%`,
+          backgroundRepeat: 'no-repeat',
+          imageRendering: 'pixelated',
+          filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
+        }}
+      />
+    </div>
   );
 
   const runtingEl = (
     <div
       key="runting"
       aria-label="Putri Rara Runting"
+      className="relative"
       style={{
+        zIndex: 1,
         height: `calc(${heightCss} * 0.97)`,
         aspectRatio: '155 / 329',
         backgroundImage: "url('/assets/level2/pixel-walk-runting.png')",

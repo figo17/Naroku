@@ -216,9 +216,10 @@ export default function Level2AlasKapakPage() {
     <div className="relative w-screen h-screen bg-[#020705] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
       <style>{`
         @keyframes kapakSwing {
-          0%   { transform: rotate(-25deg) translate(0, 0); }
-          45%  { transform: rotate(45deg) translate(12px, 14px); }
-          100% { transform: rotate(-25deg) translate(0, 0); }
+          0%   { transform: rotate(-42deg); }
+          25%  { transform: rotate(-68deg); }
+          60%  { transform: rotate(24deg); }
+          100% { transform: rotate(-42deg); }
         }
         @keyframes woodChipFly {
           0%   { opacity: 1; transform: translate(0, 0) rotate(0deg); }
@@ -313,7 +314,7 @@ export default function Level2AlasKapakPage() {
           />
         ))}
 
-        {/* SPRITE 2D PIXEL ART LANGSUNG NYAMBUNG */}
+        {/* SPRITE 2D PIXEL ART LANGSUNG NYAMBUNG (KAPAK DICEKEL ING TANGAN RARA KUNING) */}
         <div
           className="absolute z-20 pointer-events-none"
           style={{
@@ -322,27 +323,30 @@ export default function Level2AlasKapakPage() {
             transform: 'translate(-50%, -100%)',
           }}
         >
-          <PixelRoroPair isWalking={isWalking} facingLeft={facingLeft} order="kuning-first">
-            {hasAxe && (
-              <div
-                className={`absolute -right-5 top-[30%] z-25 ${isChopping ? 'anim-chop' : ''}`}
-                style={{ transformOrigin: 'bottom left' }}
-              >
+          <PixelRoroPair
+            isWalking={isWalking}
+            facingLeft={facingLeft}
+            order="runting-first"
+            kuningHandItem={
+              hasAxe ? (
                 <div
-                  className="relative"
-                  style={{ width: '4.5vw', maxWidth: 56, minWidth: 32, aspectRatio: '2.2/1' }}
+                  className={`relative w-full h-full ${isChopping ? 'anim-chop' : ''}`}
+                  style={{
+                    transformOrigin: '22% 27%',
+                    transform: isChopping ? undefined : 'rotate(-42deg)',
+                  }}
                 >
                   <Image
                     src="/assets/level2/item-kapak.png"
-                    alt="Kapak Wesi"
+                    alt="Kapak Wesi ing Tangan"
                     fill
-                    sizes="56px"
-                    className="object-contain drop-shadow-[0_4px_10px_rgba(0,0,0,0.9)]"
+                    sizes="72px"
+                    className="object-contain drop-shadow-[0_3px_6px_rgba(0,0,0,0.85)]"
                   />
                 </div>
-              </div>
-            )}
-          </PixelRoroPair>
+              ) : null
+            }
+          />
         </div>
 
         {hasAxe && (
