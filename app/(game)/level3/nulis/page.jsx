@@ -206,6 +206,16 @@ export default function Level3NulisPage() {
           {wordCount} tembung
         </div>
 
+        {/* Tombol Cepat Bukak Galeri Apresiasi Siswa */}
+        <Link
+          href="/level3/apresiasi"
+          title="Bukak Galeri Wangsulan Siswa (Love & Komentar)"
+          className="absolute z-30 left-[2.2%] bottom-[2.2%] px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 border-2 border-yellow-100 text-stone-950 text-[10px] sm:text-xs font-black shadow-[0_0_18px_rgba(250,204,21,0.55)] active:scale-95 transition-all flex items-center gap-1.5"
+        >
+          <span>🏆</span>
+          <span>Galeri Apresiasi</span>
+        </Link>
+
         {/* ===== TOMBOL TENGEN: Priksa Gladhen, Simpen, Ngulang ===== */}
         <button type="button" onClick={() => setModal('priksa')} title="Priksa Gladhen"
           className="absolute left-[80.0%] top-[71.9%] w-[19.2%] h-[6.5%] rounded-lg bg-transparent hover:bg-yellow-300/20 hover:ring-2 hover:ring-yellow-300 active:scale-[0.98] transition-all cursor-pointer z-30">
@@ -279,7 +289,7 @@ export default function Level3NulisPage() {
                 <div className="w-14 h-14 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-3xl">🎉</div>
                 <h3 className="text-xl font-serif font-black text-yellow-400 text-center">Crita Kasil Disimpen!</h3>
                 <p className="text-xs sm:text-sm text-stone-300 font-serif text-center">Narasi Legenda Rara Kuning ({wordCount} tembung) wis disimpen lan bisa diwaca guru ing Dashboard.</p>
-                <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                <div className="flex flex-wrap gap-2 justify-center">
                   <button type="button" onClick={() => setModal(null)} className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer">Terusake Nulis</button>
                   <button
                     type="button"
@@ -287,11 +297,13 @@ export default function Level3NulisPage() {
                       setModal(null);
                       setShowSimpanan(true);
                     }}
-                    className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-stone-950 font-black text-xs cursor-pointer"
+                    className="px-4 py-2.5 rounded-xl bg-amber-700 hover:bg-amber-600 text-amber-50 font-black text-xs cursor-pointer"
                   >
-                    🎒 Simpanan Jawabanmu
+                    🎒 Simpananmu
                   </button>
-                  <Link href="/peta" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs text-center">🗺️ Menyang Peta →</Link>
+                  <Link href="/level3/apresiasi" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-stone-950 font-black text-xs text-center shadow-lg">
+                    🏆 Galeri Apresiasi Siswa →
+                  </Link>
                 </div>
               </>
             )}

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 
 export default function RekapLevel3Page() {
@@ -75,6 +76,12 @@ export default function RekapLevel3Page() {
             onChange={(e) => setSearch(e.target.value)}
             className="w-full sm:w-60 px-4 py-2 bg-stone-900 border border-stone-700 rounded-lg text-sm text-stone-200 placeholder-stone-500 focus:outline-none focus:border-yellow-500"
           />
+          <Link
+            href="/level3/apresiasi"
+            className="px-4 py-2 bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-stone-950 text-xs font-black rounded-lg shadow flex items-center justify-center gap-1.5 whitespace-nowrap"
+          >
+            🏆 Galeri Apresiasi (Love &amp; Komentar)
+          </Link>
           <button
             type="button"
             onClick={downloadCSV}

@@ -62,6 +62,7 @@ export default function GuruLayout({ children }) {
     { label: "Rekap Level 1", href: "/guru/rekap-level1", icon: "👥" },
     { label: "Rekap Level 2", href: "/guru/rekap-level2", icon: "🌿" },
     { label: "Rekap Level 3", href: "/guru/rekap-level3", icon: "✍️" },
+    { label: "Galeri Apresiasi", href: "/level3/apresiasi", icon: "🏆" },
     { label: "Kelas Saya", href: "/guru/kelas", icon: "🏫" },
     { label: "Bank Soal", href: "/guru/quizzes", icon: "📝" },
   ];
