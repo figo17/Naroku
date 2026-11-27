@@ -206,15 +206,25 @@ export default function Level3NulisPage() {
           {wordCount} tembung
         </div>
 
-        {/* Tombol Cepat Bukak Galeri Apresiasi Siswa */}
-        <Link
-          href="/level3/apresiasi"
-          title="Bukak Galeri Wangsulan Siswa (Love & Komentar)"
-          className="absolute z-30 left-[2.2%] bottom-[2.2%] px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 border-2 border-yellow-100 text-stone-950 text-[10px] sm:text-xs font-black shadow-[0_0_18px_rgba(250,204,21,0.55)] active:scale-95 transition-all flex items-center gap-1.5"
-        >
-          <span>🏆</span>
-          <span>Galeri Apresiasi</span>
-        </Link>
+        {/* Tombol Cepat Bukak Galeri Apresiasi & Piyeulan Siswa */}
+        <div className="absolute z-30 left-[2.2%] bottom-[2.2%] flex items-center gap-1.5">
+          <Link
+            href="/level3/apresiasi"
+            title="Bukak Galeri Wangsulan Siswa (Love & Komentar)"
+            className="px-3 py-1.5 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 border-2 border-yellow-100 text-stone-950 text-[10px] sm:text-xs font-black shadow-[0_0_18px_rgba(250,204,21,0.55)] active:scale-95 transition-all flex items-center gap-1"
+          >
+            <span>🏆</span>
+            <span>Galeri Apresiasi</span>
+          </Link>
+          <Link
+            href="/level3/piyeulan"
+            title="Bukak Evaluasi Piyeulan Level 3"
+            className="px-3 py-1.5 rounded-full bg-emerald-800/95 hover:bg-emerald-700 border border-emerald-300 text-emerald-50 text-[10px] sm:text-xs font-black shadow-md active:scale-95 transition-all flex items-center gap-1"
+          >
+            <span>📜</span>
+            <span>Piyeulan</span>
+          </Link>
+        </div>
 
         {/* ===== TOMBOL TENGEN: Priksa Gladhen, Simpen, Ngulang ===== */}
         <button type="button" onClick={() => setModal('priksa')} title="Priksa Gladhen"
@@ -303,6 +313,9 @@ export default function Level3NulisPage() {
                   </button>
                   <Link href="/level3/apresiasi" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-stone-950 font-black text-xs text-center shadow-lg">
                     🏆 Galeri Apresiasi Siswa →
+                  </Link>
+                  <Link href="/level3/piyeulan" className="px-4 py-2.5 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white font-black text-xs text-center shadow-lg">
+                    📜 Lanjut Piyeulan →
                   </Link>
                 </div>
               </>

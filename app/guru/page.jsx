@@ -16,6 +16,8 @@ export default function GuruDashboardPage() {
     lv2NanjakDone: 0,
     lv2MisiDone: 0,
     lv2GladhenDone: 0,
+    lv3NarasiDone: 0,
+    lv3PiyeulanDone: 0,
   });
   const [recentClasses, setRecentClasses] = useState([]);
   const [recentLv2Submissions, setRecentLv2Submissions] = useState([]);
@@ -29,7 +31,7 @@ export default function GuruDashboardPage() {
         } = await supabase.auth.getUser();
         if (!user) return;
 
-        const [classesRes, quizRes, allMuridRes, oriRes, nanRes] = await Promise.all([
+        const [classesRes, quizRes, allMuridRes, oriRes, nanRes, lv3NarRes, lv3PiyRes] = await Promise.all([
           supabase
             .from("classes")
             .select("id, nama_kelas, class_code, deskripsi, created_at")
@@ -51,6 +53,8 @@ export default function GuruDashboardPage() {
             .from("level2_nanjak_answers")
             .select("*")
             .order("updated_at", { ascending: false }),
+          supabase.from("level3_nulis_answers").select("user_id, narasi"),
+          supabase.from("level3_piyeulan_answers").select("user_id, is_completed"),
         ]);
 
         const classList = classesRes.data || [];
@@ -103,6 +107,8 @@ export default function GuruDashboardPage() {
             (o) => Array.isArray(o.completed_missions) && o.completed_missions.length >= LEVEL2_MISSIONS.length
           ).length,
           lv2GladhenDone: nanList.filter((n) => n.gladhen_answer?.trim()).length,
+          lv3NarasiDone: (lv3NarRes.data || []).filter((n) => n.narasi?.trim()).length,
+          lv3PiyeulanDone: (lv3PiyRes.data || []).filter((p) => p.is_completed).length,
         });
 
         setRecentClasses(classList.slice(0, 4));
@@ -243,6 +249,46 @@ export default function GuruDashboardPage() {
               className="px-4 py-2 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap"
             >
               <span>Buka Semua Jawaban Level 2</span>
+              <span>→</span>
+            </Link>
+          </div>
+        </div>
+
+        {/* Banner Rekap Level 3 (Narasi Crita, Apresiasi & Piyeulan) */}
+        <div className="lg:col-span-2 p-5 rounded-xl bg-gradient-to-r from-yellow-950/80 via-amber-950/75 to-stone-900 border border-yellow-400/60 shadow-xl flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start gap-4">
+            <div className="w-12 h-12 rounded-xl bg-yellow-400/20 border border-yellow-400/60 flex items-center justify-center text-2xl shadow shrink-0">
+              📜
+            </div>
+            <div>
+              <h3 className="font-serif font-black text-yellow-400 text-base sm:text-lg">
+                Rekap Level 3: Narasi Crita, Galeri Apresiasi &amp; Piyeulan (Bener/Salah)
+              </h3>
+              <p className="text-xs text-stone-300 mt-1 leading-relaxed">
+                Lihat jawaban per murid kanggo 10 pernyataan Piyeulan (Bener/Salah), wangsulan narasi lengkap, sarta wenehi apresiasi Love &amp; Komentar.
+              </p>
+              <div className="mt-2.5 flex flex-wrap gap-2 text-[11px]">
+                <span className="px-2.5 py-1 rounded bg-stone-950/70 border border-yellow-700/60 text-yellow-300">
+                  Jawaban Piyeulan: <strong>{loading ? "-" : stats.lv3PiyeulanDone}</strong> murid
+                </span>
+                <span className="px-2.5 py-1 rounded bg-stone-950/70 border border-emerald-700/60 text-emerald-300">
+                  Narasi Crita: <strong>{loading ? "-" : stats.lv3NarasiDone}</strong> murid
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2 justify-end shrink-0">
+            <Link
+              href="/level3/apresiasi"
+              className="px-3.5 py-2 rounded-lg bg-amber-800 hover:bg-amber-700 border border-yellow-400/50 text-yellow-200 font-bold text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span>🏆 Galeri Apresiasi</span>
+            </Link>
+            <Link
+              href="/guru/rekap-level3"
+              className="px-4 py-2 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-stone-950 font-black text-xs transition shadow flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <span>Lihat Jawaban Level 3 Per Murid</span>
               <span>→</span>
             </Link>
           </div>

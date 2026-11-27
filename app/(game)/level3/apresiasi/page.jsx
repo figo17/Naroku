@@ -615,6 +615,18 @@ export default function Level3GaleriApresiasiPage() {
             ❯
           </button>
         </div>
+
+        {/* ===== TOMBOL LANJUT MENYANG HALAMAN PUNGKASAN LEVEL 3: PIYEULAN ===== */}
+        {!isStaff && (
+          <Link
+            href="/level3/piyeulan"
+            title="Lanjut menyang Evaluasi Piyeulan Level 3"
+            className="absolute right-[6.8%] top-[81.3%] z-35 px-3.5 py-1.5 sm:px-4 sm:py-1.5 rounded-full bg-gradient-to-r from-yellow-400 via-amber-400 to-yellow-500 hover:from-yellow-300 hover:to-amber-400 border-2 border-yellow-100 text-stone-950 font-serif font-black text-[10px] sm:text-xs shadow-[0_0_20px_rgba(250,204,21,0.65)] active:scale-95 transition-all flex items-center gap-1.5 animate-pulse whitespace-nowrap"
+          >
+            <span>📜 Lanjut: Piyeulan</span>
+            <span>➜</span>
+          </Link>
+        )}
       </div>
 
       {/* Toast */}
