@@ -231,13 +231,7 @@ export default function Level2NgumpulakeJamuPage() {
         setIsWalking(false);
         playVictorySound();
         recordLevel2Mission(supabase, 'jamu');
-        setToast({
-          type: 'success',
-          text: '🎉 Jangkep 12/12 godhong! Bali menyang Resi Darmo kanggo ngolah jamu...',
-        });
-        setTimeout(() => {
-          router.push('/level2/ngolah');
-        }, 900);
+        router.push('/level2/ngolah');
       } else if (nextVal === TARGET_PER_HERB) {
         setToast({
           type: 'success',

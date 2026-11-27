@@ -23,6 +23,7 @@ export default function Level2GladhenAkhirPage() {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/padhepokan');
     async function loadData() {
       try {
         setLoading(true);
@@ -102,12 +103,7 @@ export default function Level2GladhenAkhirPage() {
         });
         setTimeout(() => setToast(null), 4000);
       } else {
-        setToast({
-          type: 'success',
-          text: '✓ Wangsulan Gladhen Nulis kasil disimpen!',
-        });
-        setTimeout(() => setToast(null), 4000);
-        setShowSuccessModal(true);
+        router.push('/level2/padhepokan');
       }
     } catch (err) {
       console.error('Error in handleSave:', err);

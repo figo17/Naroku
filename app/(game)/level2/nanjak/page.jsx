@@ -24,6 +24,7 @@ export default function Level2NanjakPage() {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/mucuk');
     async function loadData() {
       try {
         setLoading(true);
@@ -105,12 +106,7 @@ export default function Level2NanjakPage() {
         });
         setTimeout(() => setToast(null), 4000);
       } else {
-        setToast({
-          type: 'success',
-          text: '✓ Wangsulan kasil disimpen menyang database guru!',
-        });
-        setTimeout(() => setToast(null), 4000);
-        setShowSuccessModal(true);
+        router.push('/level2/mucuk');
       }
     } catch (err) {
       console.error('Error in handleSave:', err);

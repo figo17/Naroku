@@ -10,23 +10,13 @@ import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
-  STAGE FLOW (/level2/pring):
-  'intro'   -> screen_pring_komplit.jpg (karakter + dialog + pring + tombol)
-  'walk'    -> screen_pring_tanpa_cewe.jpg, sprite mlaku nyedhaki pring
+  STAGE FLOW (/level2/pring - langsung nyambung saka /level2/macan):
+  'walk'    -> screen_pring_tanpa_cewe.jpg, sprite 2D pixel mlaku nyedhaki pring
   'arrange' -> screen_pring_kosong.jpg, susun 3 pring ing pinggir jurang
-  'bridge'  -> screen_pring_jembatan.jpg, sprite mlaku menyang jembatan
-  'done'    -> modal rampung
+  'bridge'  -> screen_pring_jembatan.jpg, sprite mlaku menyang kreteg -> langsung pindah /level2/kembang
 */
 
 const START_POS = { x: 24, y: 86 };
-const BG = {
-  intro: '/assets/level2/screen_pring_komplit.jpg',
-  walk: '/assets/level2/screen_pring_tanpa_cewe.jpg',
-  arrange: '/assets/level2/screen_pring_kosong.jpg',
-  bridge: '/assets/level2/screen_pring_jembatan.jpg',
-  done: '/assets/level2/screen_pring_jembatan.jpg',
-};
-// Pring ing lemah (kanggo dipencet) lan slot tujuan ing pinggir jurang
 const PILE = [
   { left: 40, top: 66 },
   { left: 47, top: 72 },
@@ -43,10 +33,11 @@ export default function Level2PringPage() {
   const supabase = createClient();
   const analogRef = useRef({ x: 0, y: 0, active: false });
   const walkStopTimerRef = useRef(null);
+  const doneRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
-  const [stage, setStage] = useState('intro');
-  const stageRef = useRef('intro');
+  const [stage, setStage] = useState('walk');
+  const stageRef = useRef('walk');
   const [charPos, setCharPos] = useState(START_POS);
   const charPosRef = useRef(START_POS);
   const [facingLeft, setFacingLeft] = useState(false);
@@ -60,6 +51,7 @@ export default function Level2PringPage() {
   }, []);
 
   useEffect(() => {
+    router.prefetch('/level2/kembang');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -70,7 +62,7 @@ export default function Level2PringPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3200);
+    const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -78,16 +70,9 @@ export default function Level2PringPage() {
     analogRef.current = { x: 0, y: 0, active: false };
   }, []);
 
-  const startWalk = useCallback(() => {
-    if (stageRef.current !== 'intro') return;
-    charPosRef.current = START_POS;
-    setCharPos(START_POS);
-    goStage('walk');
-    setToast({ type: 'info', text: '🚶 Mlaku nyedhaki pring nganggo Analog utawa tombol Panah!' });
-  }, [goStage]);
-
   const moveCharacter = useCallback(
     (dx, dy) => {
+      if (doneRef.current) return;
       const s = stageRef.current;
       if (s !== 'walk' && s !== 'bridge') return;
 
@@ -107,14 +92,15 @@ export default function Level2PringPage() {
         stopAnalog();
         goStage('arrange');
         setToast({ type: 'success', text: '🎋 Pencet pring siji-siji kanggo nyusun 3 pring dadi kreteg!' });
-      } else if (s === 'bridge' && nx >= 42 && ny <= 62) {
+      } else if (s === 'bridge' && nx >= 42 && ny <= 62 && !doneRef.current) {
+        doneRef.current = true;
         stopAnalog();
         setIsWalking(false);
         recordLevel2Mission(supabase, 'pring');
-        goStage('done');
+        router.push('/level2/kembang');
       }
     },
-    [goStage, stopAnalog]
+    [goStage, router, stopAnalog, supabase]
   );
 
   const placeBamboo = (i) => {
@@ -122,10 +108,8 @@ export default function Level2PringPage() {
     const next = placed.map((p, j) => p || j === i);
     setPlaced(next);
     if (next.every(Boolean)) {
-      setTimeout(() => {
-        goStage('bridge');
-        setToast({ type: 'success', text: '🌉 Kreteg pring wis dadi! Mlaku menyang kreteg kanggo nyebrang!' });
-      }, 700);
+      goStage('bridge');
+      setToast({ type: 'success', text: '🌉 Kreteg pring wis dadi! Mlaku menyang kreteg kanggo nyebrang!' });
     }
   };
 
@@ -139,26 +123,21 @@ export default function Level2PringPage() {
     };
     let raf;
     const loop = () => {
-      let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
-      let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
-      keys.forEach((k) => {
-        dx += map[k][0] * 0.6;
-        dy += map[k][1] * 0.6;
-      });
-      if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+      if (!doneRef.current) {
+        let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
+        let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
+        keys.forEach((k) => {
+          dx += map[k][0] * 0.6;
+          dy += map[k][1] * 0.6;
+        });
+        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+      }
       raf = requestAnimationFrame(loop);
     };
     const down = (e) => {
       if (map[e.code]) {
         e.preventDefault();
-        if (stageRef.current === 'intro') {
-          startWalk();
-          return;
-        }
         keys.add(e.code);
-      } else if ((e.code === 'Space' || e.code === 'Enter') && stageRef.current === 'intro') {
-        e.preventDefault();
-        startWalk();
       }
     };
     const up = (e) => keys.delete(e.code);
@@ -171,16 +150,7 @@ export default function Level2PringPage() {
       cancelAnimationFrame(raf);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
     };
-  }, [moveCharacter, startWalk]);
-
-  const reset = () => {
-    stopAnalog();
-    setPlaced([false, false, false]);
-    charPosRef.current = START_POS;
-    setCharPos(START_POS);
-    setFacingLeft(false);
-    goStage('intro');
-  };
+  }, [moveCharacter]);
 
   if (loading) {
     return (
@@ -191,24 +161,36 @@ export default function Level2PringPage() {
     );
   }
 
-  const showSprite = stage === 'walk' || stage === 'arrange' || stage === 'bridge' || stage === 'done';
   const depthScale = Math.max(0.72, Math.min(1.05, 0.72 + ((charPos.y - 44) / 51) * 0.33));
 
   return (
     <div className="relative w-screen h-screen bg-[#04120a] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
-      <style>{`
-        @keyframes roroWalkBob {
-          0%,50%,100% { transform: translateY(0) rotate(0deg) scale(1,0.98); }
-          25% { transform: translateY(-8px) rotate(2.4deg) scale(0.99,1.03); }
-          75% { transform: translateY(-8px) rotate(-2.4deg) scale(0.99,1.03); }
-        }
-        @keyframes roroIdleBreath { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
-        .anim-walk { animation: roroWalkBob 0.42s ease-in-out infinite; }
-        .anim-idle { animation: roroIdleBreath 2.4s ease-in-out infinite; }
-      `}</style>
-
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
-        <Image src={BG[stage]} alt="Jurang Gunung Wilis" fill priority sizes="100vw" className="object-contain object-center" />
+        {/* Background bersih tanpa karakter cewek (status lingkungan pring) */}
+        <Image
+          src="/assets/level2/screen_pring_tanpa_cewe.jpg"
+          alt="Jurang Gunung Wilis - Pring"
+          fill
+          priority
+          sizes="100vw"
+          className={`object-contain object-center ${stage === 'walk' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        />
+        <Image
+          src="/assets/level2/screen_pring_kosong.jpg"
+          alt="Jurang Gunung Wilis - Susun Pring"
+          fill
+          priority
+          sizes="100vw"
+          className={`object-contain object-center ${stage === 'arrange' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        />
+        <Image
+          src="/assets/level2/screen_pring_jembatan.jpg"
+          alt="Jurang Gunung Wilis - Kreteg Pring"
+          fill
+          priority
+          sizes="100vw"
+          className={`object-contain object-center ${stage === 'bridge' ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+        />
 
         {/* Navigasi */}
         <div className="absolute top-3 left-4 z-40 flex gap-2">
@@ -222,25 +204,27 @@ export default function Level2PringPage() {
 
         {/* Petunjuk */}
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 text-amber-300 font-bold text-[10px] sm:text-xs">
-          {stage === 'intro' && '🎋 Pencet "Gunakake pring"'}
-          {stage === 'walk' && '🚶 Cedhaki pring!'}
+          {stage === 'walk' && '🚶 Cedhaki tumpukan pring!'}
           {stage === 'arrange' && `🎋 Susun pring: ${placed.filter(Boolean).length}/3`}
           {stage === 'bridge' && '🌉 Mlaku menyang kreteg!'}
-          {stage === 'done' && '🎉 Rampung!'}
         </div>
 
-        {/* Intro: tombol Gunakake pring + hitbox tumpukan pring */}
-        {stage === 'intro' && (
-          <>
-            <button type="button" onClick={startWalk} title="Gunakake pring"
-              className="absolute left-[59.5%] top-[61.5%] w-[15.5%] h-[7.5%] rounded-full z-30 cursor-pointer hover:bg-amber-400/25 hover:ring-2 hover:ring-yellow-300 active:scale-95 transition-all">
-              <span className="sr-only">Gunakake pring</span>
-            </button>
-            <button type="button" onClick={startWalk} title="Pring"
-              className="absolute left-[38%] top-[56%] w-[21%] h-[31%] rounded-3xl z-25 cursor-pointer hover:bg-amber-400/15 transition-all">
-              <span className="sr-only">Pring</span>
-            </button>
-          </>
+        {/* Walk: Hitbox bantuan klik langsung ing tumpukan pring */}
+        {stage === 'walk' && (
+          <button
+            type="button"
+            onClick={() => {
+              stopAnalog();
+              charPosRef.current = { x: 37, y: 78 };
+              setCharPos({ x: 37, y: 78 });
+              goStage('arrange');
+              setToast({ type: 'success', text: '🎋 Pencet pring siji-siji kanggo nyusun 3 pring dadi kreteg!' });
+            }}
+            title="Cedhaki lan susun pring"
+            className="absolute left-[38%] top-[56%] w-[21%] h-[31%] rounded-3xl z-20 cursor-pointer hover:bg-amber-400/15 transition-all"
+          >
+            <span className="sr-only">Pring</span>
+          </button>
         )}
 
         {/* Arrange: 3 pring kanggo disusun */}
@@ -248,12 +232,17 @@ export default function Level2PringPage() {
           PILE.map((p, i) => {
             const pos = placed[i] ? SLOTS[i] : p;
             return (
-              <button key={i} type="button" onClick={() => placeBamboo(i)} disabled={placed[i]}
+              <button
+                key={i}
+                type="button"
+                onClick={() => placeBamboo(i)}
+                disabled={placed[i]}
                 title={placed[i] ? 'Wis disusun' : 'Pencet kanggo nyusun pring'}
-                className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-700 ease-out ${
+                className={`absolute z-30 -translate-x-1/2 -translate-y-1/2 transition-all duration-500 ease-out ${
                   placed[i] ? 'cursor-default' : 'cursor-pointer hover:scale-110 animate-pulse'
                 }`}
-                style={{ left: `${pos.left}%`, top: `${pos.top}%`, width: '11vw', maxWidth: 130, minWidth: 64, aspectRatio: '669/373' }}>
+                style={{ left: `${pos.left}%`, top: `${pos.top}%`, width: '11vw', maxWidth: 130, minWidth: 64, aspectRatio: '669/373' }}
+              >
                 <Image src="/assets/level2/item-pring.png" alt="Pring" fill sizes="130px" className="object-contain drop-shadow-[0_6px_10px_rgba(0,0,0,0.7)]" />
               </button>
             );
@@ -269,53 +258,29 @@ export default function Level2PringPage() {
           </div>
         )}
 
-        {/* Sprite karakter */}
-        {showSprite && (
-          <div className="absolute z-25 pointer-events-none"
-            style={{ left: `${charPos.x}%`, top: `${charPos.y}%`, transform: `translate(-50%, -100%) scale(${depthScale})`, transformOrigin: 'bottom center' }}>
-            <PixelRoroPair isWalking={isWalking} facingLeft={facingLeft} />
-          </div>
-        )}
+        {/* Sprite karakter 2D Pixel Art aktif wiwit awal */}
+        <div
+          className="absolute z-25 pointer-events-none"
+          style={{ left: `${charPos.x}%`, top: `${charPos.y}%`, transform: `translate(-50%, -100%) scale(${depthScale})`, transformOrigin: 'bottom center' }}
+        >
+          <PixelRoroPair isWalking={isWalking} facingLeft={facingLeft} />
+        </div>
 
         {/* Analog Kontroler */}
-        {stage !== 'done' && (
-          <AnalogJoystick
-            disabled={stage === 'arrange'}
-            onStart={() => {
-              if (stageRef.current === 'intro') startWalk();
-            }}
-            onChange={(v) => {
-              analogRef.current = v;
-            }}
-          />
-        )}
-
-        {/* Modal rampung */}
-        {stage === 'done' && (
-          <div className="absolute inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 text-center space-y-4">
-              <div className="text-5xl">🌉</div>
-              <h3 className="text-xl font-serif font-black text-yellow-400">Kreteg Pring Kasil Disusun!</h3>
-              <p className="text-xs sm:text-sm text-stone-300 font-serif leading-relaxed">
-                Putri Rara Kuning lan Rara Runting kasil nata pring dadi kreteg lan nyebrang jurang kanthi slamet.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center">
-                <button type="button" onClick={reset} className="px-4 py-2.5 rounded-xl bg-stone-800 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer">
-                  Baleni 🔄
-                </button>
-                <Link href="/level2/kembang" className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 text-stone-950 font-black text-xs sm:text-sm">
-                  🌸 Lanjut menyang Kembang Pusaka →
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
+        <AnalogJoystick
+          disabled={stage === 'arrange'}
+          onChange={(v) => {
+            analogRef.current = v;
+          }}
+        />
       </div>
 
       {toast && (
-        <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-2.5 rounded-2xl border text-xs sm:text-sm font-bold ${
-          toast.type === 'success' ? 'bg-emerald-950/95 border-emerald-400 text-emerald-200' : 'bg-stone-900/95 border-yellow-400 text-yellow-300'
-        }`}>
+        <div
+          className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-2.5 rounded-2xl border text-xs sm:text-sm font-bold ${
+            toast.type === 'success' ? 'bg-emerald-950/95 border-emerald-400 text-emerald-200' : 'bg-stone-900/95 border-yellow-400 text-yellow-300'
+          }`}
+        >
           {toast.text}
         </div>
       )}

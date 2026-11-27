@@ -18,6 +18,7 @@ export default function Level2MucukPage() {
   const [showStoryModal, setShowStoryModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/alas');
     async function loadData() {
       try {
         setLoading(true);

@@ -103,12 +103,7 @@ export default function Level2GladhenJamuPage() {
         });
         setTimeout(() => setToast(null), 4000);
       } else {
-        setToast({
-          type: 'success',
-          text: '✓ Wangsulan Gladhen Nulis Jamu kasil disimpen!',
-        });
-        setTimeout(() => setToast(null), 4000);
-        setShowSuccessModal(true);
+        router.push('/level2/grojogan');
       }
     } catch (err) {
       console.error('Error in handleSave:', err);

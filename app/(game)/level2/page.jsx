@@ -18,6 +18,7 @@ export default function Level2Adegan2Page() {
   const [hoveredButton, setHoveredButton] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/orientasi');
     async function checkPrerequisites() {
       try {
         setLoading(true);

@@ -18,6 +18,7 @@ export default function Level2OrientasiHasilPage() {
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
+    router.prefetch('/level2/nanjak');
     async function loadData() {
       try {
         setLoading(true);

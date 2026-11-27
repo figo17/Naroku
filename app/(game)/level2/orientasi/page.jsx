@@ -76,6 +76,7 @@ export default function Level2OrientasiPerawatanPage() {
 
   // 1. Load User & Previous Results
   useEffect(() => {
+    router.prefetch('/level2/orientasi/hasil');
     async function loadData() {
       try {
         setLoading(true);
@@ -205,11 +206,15 @@ export default function Level2OrientasiPerawatanPage() {
         text: `✓ Bener! ${itemData.name} kasil ditrepake kanggo ${itemData.targetLabel}! (${itemData.reason})`,
       });
 
-      // Check if all 4 are now completed
+      // Check if all 4 are now completed -> langsung pindah menyang /level2/orientasi/hasil tanpa jeda!
       const totalApplied = updated.rara_kuning.length + updated.rara_runting.length;
       if (totalApplied === 4) {
-        saveCompletion(updated, true);
-        setTimeout(() => setShowSuccessModal(true), 600);
+        setActiveItem(null);
+        setIsDragging(false);
+        setHoveredTarget(null);
+        await saveCompletion(updated, true);
+        router.push('/level2/orientasi/hasil');
+        return;
       }
     } else {
       // INCORRECT TARGET
@@ -267,7 +272,7 @@ export default function Level2OrientasiPerawatanPage() {
   const handleTindakakePerawatan = () => {
     const totalApplied = appliedTreatments.rara_kuning.length + appliedTreatments.rara_runting.length;
     if (totalApplied === 4) {
-      setShowSuccessModal(true);
+      router.push('/level2/orientasi/hasil');
     } else {
       setFeedback({
         type: 'info',

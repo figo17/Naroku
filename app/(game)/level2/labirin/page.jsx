@@ -9,12 +9,9 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
 /*
-  STAGE FLOW (/level2/labirin - sawise /level2/kembang):
-  'intro' -> Full background screen_labirin_komplit.jpg (karakter Rara Kuning & Runting + dialog).
-  'walk'  -> Full background screen_labirin_polos.jpg + Sprite 2D Walk Cycle 8-frame
-             (kaki melangkah nyata, kain jarik & selendang mengayun halus, kontroler 60fps mulus).
-             Pemain mengarahkan kedua putri masuk melewati Gerbang Labirin di sisi kanan.
-  'done'  -> Modal berhasil masuk Gerbang Labirin.
+  STAGE FLOW (/level2/labirin - langsung nyambung saka /level2/kembang):
+  Full background screen_labirin_polos.jpg (tanpa karakter cewek) + Sprite 2D Pixel Walk Cycle
+  aktif langsung wiwit awal. Begitu tekan Gerbang Labirin -> langsung pindah /level2/gladhen tanpa jeda.
 */
 
 const START_POS = { x: 27.5, y: 95.0 };
@@ -24,17 +21,16 @@ export default function Level2LabirinPage() {
   const router = useRouter();
   const supabase = createClient();
   const audioCtxRef = useRef(null);
+  const doneRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
-  const [stage, setStage] = useState('intro'); // 'intro' | 'walk' | 'done'
-  const stageRef = useRef('intro');
 
-  // Physics & Smooth 8-Frame Walk Cycle States
+  // Physics & Smooth Walk Cycle States
   const [charPos, setCharPos] = useState(START_POS);
   const posRef = useRef({ ...START_POS });
   const velRef = useRef({ vx: 0, vy: 0 });
   const walkPhaseRef = useRef(0);
-  const [walkFrame, setWalkFrame] = useState(0); // 0..7
+  const [walkFrame, setWalkFrame] = useState(0);
   const [isMoving, setIsMoving] = useState(false);
   const [facingLeft, setFacingLeft] = useState(false);
   const [leanDeg, setLeanDeg] = useState(0);
@@ -45,12 +41,8 @@ export default function Level2LabirinPage() {
   const mistWarnCooldownRef = useRef(0);
   const [toast, setToast] = useState(null);
 
-  const goStage = useCallback((s) => {
-    stageRef.current = s;
-    setStage(s);
-  }, []);
-
   useEffect(() => {
+    router.prefetch('/level2/gladhen');
     supabase.auth
       .getUser()
       .then(({ data: { user } }) => {
@@ -61,7 +53,7 @@ export default function Level2LabirinPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3200);
+    const t = setTimeout(() => setToast(null), 3000);
     return () => clearTimeout(t);
   }, [toast]);
 
@@ -107,21 +99,7 @@ export default function Level2LabirinPage() {
     }
   }, []);
 
-  const startWalk = useCallback(() => {
-    if (stageRef.current !== 'intro') return;
-    posRef.current = { ...START_POS };
-    velRef.current = { vx: 0, vy: 0 };
-    walkPhaseRef.current = 0;
-    setCharPos(START_POS);
-    setWalkFrame(0);
-    goStage('walk');
-    setToast({
-      type: 'info',
-      text: '🌿 Gunakake Analog utawa tombol Panah kanggo mlaku menyang Gerbang Labirin!',
-    });
-  }, [goStage]);
-
-  // Unified 60fps Physics + 8-Frame Footstep Animation Loop
+  // Unified 60fps Physics + Footstep Animation Loop
   useEffect(() => {
     let raf;
     let lastTime = performance.now();
@@ -131,7 +109,7 @@ export default function Level2LabirinPage() {
       const dt = Math.min(0.05, (now - lastTime) / 1000);
       lastTime = now;
 
-      if (stageRef.current === 'walk') {
+      if (!doneRef.current) {
         let ix = analogRef.current.x;
         let iy = analogRef.current.y;
         const keys = keysRef.current;
@@ -140,16 +118,15 @@ export default function Level2LabirinPage() {
         if (keys.has('ArrowUp') || keys.has('KeyW')) iy -= 1;
         if (keys.has('ArrowDown') || keys.has('KeyS')) iy += 1;
 
-        // Normalize diagonal input so diagonal speed isn't faster
         const mag = Math.hypot(ix, iy);
         if (mag > 1) {
           ix /= mag;
           iy /= mag;
         }
 
-        const MAX_SPEED_X = 24; // % per second
+        const MAX_SPEED_X = 24;
         const MAX_SPEED_Y = 18;
-        const SMOOTH = 13; // responsive smooth acceleration & glide deceleration
+        const SMOOTH = 13;
 
         const targetVx = ix * MAX_SPEED_X;
         const targetVy = iy * MAX_SPEED_Y;
@@ -169,7 +146,7 @@ export default function Level2LabirinPage() {
           let nx = Math.max(16, Math.min(86, posRef.current.x + vx * dt));
           let ny = Math.max(66, Math.min(97, posRef.current.y + vy * dt));
 
-          // Rintangan semak tengah labirin (x: 42..68, y < 82) supaya karakter mengikuti jalan tanah
+          // Rintangan semak tengah labirin (x: 42..68, y < 82)
           if (nx > 42 && nx < 68 && ny < 82) {
             if (posRef.current.y >= 82) ny = 82;
             else if (posRef.current.x <= 42) nx = 42;
@@ -180,7 +157,6 @@ export default function Level2LabirinPage() {
           setCharPos({ x: nx, y: ny });
           setIsMoving(true);
 
-          // Advance 10-step ping-pong pixel-art walk cycle (frames 0..5..0)
           walkPhaseRef.current = (walkPhaseRef.current + speed * dt * 0.72) % 10;
           const stepIdx = Math.floor(walkPhaseRef.current);
           setWalkFrame(stepIdx);
@@ -190,7 +166,6 @@ export default function Level2LabirinPage() {
             playSound('step');
           }
 
-          // Peringatan lembut jika masuk jalan kabut buntu di kiri atas
           if (nx < 38 && ny < 72 && now - mistWarnCooldownRef.current > 2800) {
             mistWarnCooldownRef.current = now;
             setToast({
@@ -199,15 +174,16 @@ export default function Level2LabirinPage() {
             });
           }
 
-          // Sampai di Gerbang Labirin (kanan: x 73..86, y 68..90)
-          if (nx >= 73 && nx <= 86 && ny >= 68 && ny <= 90) {
+          // Sampai di Gerbang Labirin (kanan: x 73..86, y 68..90) -> langsung pindah /level2/gladhen!
+          if (nx >= 73 && nx <= 86 && ny >= 68 && ny <= 90 && !doneRef.current) {
+            doneRef.current = true;
             analogRef.current = { x: 0, y: 0, active: false };
             velRef.current = { vx: 0, vy: 0 };
             setIsMoving(false);
             setWalkFrame(0);
             playSound('victory');
             recordLevel2Mission(supabase, 'labirin');
-            goStage('done');
+            router.push('/level2/gladhen');
           }
         } else {
           setIsMoving(false);
@@ -221,7 +197,7 @@ export default function Level2LabirinPage() {
 
     raf = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf);
-  }, [goStage, playSound]);
+  }, [playSound, router, supabase]);
 
   // Keyboard Listeners
   useEffect(() => {
@@ -229,11 +205,7 @@ export default function Level2LabirinPage() {
     const onDown = (e) => {
       if (valid.has(e.code)) {
         e.preventDefault();
-        if (stageRef.current === 'intro') startWalk();
         keysRef.current.add(e.code);
-      } else if ((e.code === 'Space' || e.code === 'Enter') && stageRef.current === 'intro') {
-        e.preventDefault();
-        startWalk();
       }
     };
     const onUp = (e) => keysRef.current.delete(e.code);
@@ -249,18 +221,7 @@ export default function Level2LabirinPage() {
       window.removeEventListener('keyup', onUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [startWalk]);
-
-  const reset = () => {
-    analogRef.current = { x: 0, y: 0, active: false };
-    posRef.current = { ...START_POS };
-    velRef.current = { vx: 0, vy: 0 };
-    setCharPos(START_POS);
-    setWalkFrame(0);
-    setIsMoving(false);
-    setFacingLeft(false);
-    goStage('intro');
-  };
+  }, []);
 
   if (loading) {
     return (
@@ -271,10 +232,6 @@ export default function Level2LabirinPage() {
     );
   }
 
-  const currentBg =
-    stage === 'intro' ? '/assets/level2/screen_labirin_komplit.jpg' : '/assets/level2/screen_labirin_polos.jpg';
-
-  // Perspektif kedalaman halus saat mendekati gerbang labirin
   const depthScale = Math.max(0.7, Math.min(1.04, 0.7 + ((charPos.y - 58) / 31) * 0.34));
   const kuningFrame = isMoving ? PING_PONG_FRAMES[walkFrame % 10] : 0;
   const runtingFrame = isMoving ? PING_PONG_FRAMES[(walkFrame + 2) % 10] : 0;
@@ -299,9 +256,9 @@ export default function Level2LabirinPage() {
         <img src="/assets/level2/pixel-walk-runting.png" alt="" />
       </div>
 
-      {/* Ambient Full-Screen Backdrop (menutup 100% layar di rasio apa pun tanpa bar putih/hitam) */}
+      {/* Ambient Full-Screen Backdrop */}
       <Image
-        src={currentBg}
+        src="/assets/level2/screen_labirin_polos.jpg"
         alt=""
         fill
         priority
@@ -312,24 +269,12 @@ export default function Level2LabirinPage() {
       {/* Full 16:9 Stage Container */}
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
         <Image
-          src="/assets/level2/screen_labirin_komplit.jpg"
-          alt="Labirin Alas Gunung Wilis - Dialog Rara Kuning lan Rara Runting"
-          fill
-          priority
-          sizes="100vw"
-          className={`object-cover object-center transition-opacity duration-300 ${
-            stage === 'intro' ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
-        />
-        <Image
           src="/assets/level2/screen_labirin_polos.jpg"
           alt="Labirin Alas Gunung Wilis"
           fill
           priority
           sizes="100vw"
-          className={`object-cover object-center transition-opacity duration-300 ${
-            stage !== 'intro' ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
+          className="object-cover object-center"
         />
 
         {/* Navigasi Kiri Atas */}
@@ -350,131 +295,77 @@ export default function Level2LabirinPage() {
 
         {/* Status Petunjuk Kanan Atas */}
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 text-amber-300 font-bold text-[10px] sm:text-xs shadow-lg">
-          {stage === 'intro' && '🌿 Pencet Kontroler / "Mulai Mlaku"'}
-          {stage === 'walk' && '🚪 Arahake menyang Gerbang Labirin (Tengen)!'}
-          {stage === 'done' && '🎉 Kasil Mlebu Labirin!'}
+          🚪 Arahake menyang Gerbang Labirin (Tengen)!
         </div>
 
-        {/* Intro: Tombol Mulai Mlaku */}
-        {stage === 'intro' && (
-          <button
-            type="button"
-            onClick={startWalk}
-            className="absolute left-1/2 bottom-[6%] -translate-x-1/2 z-35 px-5 py-2.5 rounded-full bg-amber-950/90 hover:bg-amber-900 border-2 border-yellow-400 text-yellow-200 font-black text-xs sm:text-sm shadow-[0_0_25px_rgba(250,204,21,0.5)] active:scale-95 transition-all cursor-pointer animate-bounce"
-          >
-            🚶‍♀️ Mulai Mlaku Bebarengan
-          </button>
-        )}
-
         {/* Indikator Tujuan Gerbang Labirin */}
-        {stage === 'walk' && (
-          <div className="absolute left-[79%] top-[62%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
-            <div className="px-3 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-300 text-emerald-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
-              🚪 Gerbang Labirin
-            </div>
-            <div className="w-16 h-10 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
+        <div className="absolute left-[79%] top-[62%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
+          <div className="px-3 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-300 text-emerald-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
+            🚪 Gerbang Labirin
           </div>
-        )}
+          <div className="w-16 h-10 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
+        </div>
 
-        {/* SPRITE KARAKTER 2D WALK CYCLE (8-FRAME KAKI MELANGKAH HALUS) */}
-        {stage !== 'intro' && (
+        {/* SPRITE KARAKTER 2D PIXEL ART AKTIF WIWIT AWAL */}
+        <div
+          className="absolute z-25 pointer-events-none will-change-transform"
+          style={{
+            left: `${charPos.x}%`,
+            top: `${charPos.y}%`,
+            transform: `translate(-50%, -96%) scale(${depthScale}) rotate(${leanDeg}deg)`,
+            transformOrigin: 'bottom center',
+          }}
+        >
           <div
-            className="absolute z-25 pointer-events-none will-change-transform"
+            className="absolute bottom-1 left-1/2 -translate-x-1/2 w-[78%] h-3.5 rounded-full bg-black/55 blur-[3px]"
             style={{
-              left: `${charPos.x}%`,
-              top: `${charPos.y}%`,
-              transform: `translate(-50%, -96%) scale(${depthScale}) rotate(${leanDeg}deg)`,
-              transformOrigin: 'bottom center',
-            }}
-          >
-            {/* Bayangan kaki lembut mengikuti langkah */}
-            <div
-              className="absolute bottom-1 left-1/2 -translate-x-1/2 w-[78%] h-3.5 rounded-full bg-black/55 blur-[3px]"
-              style={{
-                transform: `translateX(-50%) scaleX(${isMoving ? 1.06 : 0.96})`,
-              }}
-            />
-
-            <div
-              className={`relative flex items-end ${isMoving ? '' : 'anim-idle-soft'}`}
-              style={{
-                transform: facingLeft ? 'scaleX(-1)' : 'scaleX(1)',
-                transition: 'transform 0.14s ease-out',
-              }}
-            >
-              {/* Putri Rara Kuning (Kebaya Kuning Selendang Merah - Pixel Art 6-Frame) */}
-              <div
-                aria-label="Putri Rara Kuning"
-                style={{
-                  height: 'clamp(76px, 21vh, 146px)',
-                  aspectRatio: '143 / 338',
-                  backgroundImage: "url('/assets/level2/pixel-walk-kuning.png')",
-                  backgroundSize: '600% 100%',
-                  backgroundPosition: `${kuningFramePct}% 0%`,
-                  backgroundRepeat: 'no-repeat',
-                  imageRendering: 'pixelated',
-                  filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
-                }}
-              />
-
-              {/* Putri Rara Runting (Kebaya Hijau - Pixel Art 6-Frame) */}
-              <div
-                aria-label="Putri Rara Runting"
-                className="-ml-2"
-                style={{
-                  height: 'clamp(74px, 20.4vh, 142px)',
-                  aspectRatio: '155 / 329',
-                  backgroundImage: "url('/assets/level2/pixel-walk-runting.png')",
-                  backgroundSize: '600% 100%',
-                  backgroundPosition: `${runtingFramePct}% 0%`,
-                  backgroundRepeat: 'no-repeat',
-                  imageRendering: 'pixelated',
-                  filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
-                }}
-              />
-            </div>
-          </div>
-        )}
-
-        {/* KONTROLER ANALOG 360° MULUS */}
-        {stage !== 'done' && (
-          <AnalogJoystick
-            onStart={() => {
-              if (stageRef.current === 'intro') startWalk();
-            }}
-            onChange={(v) => {
-              analogRef.current = v;
+              transform: `translateX(-50%) scaleX(${isMoving ? 1.06 : 0.96})`,
             }}
           />
-        )}
 
-        {/* Modal Selesai Masuk Gerbang Labirin */}
-        {stage === 'done' && (
-          <div className="absolute inset-0 z-50 bg-stone-950/75 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 text-center space-y-4 shadow-2xl">
-              <div className="text-5xl">🌿</div>
-              <h3 className="text-xl font-serif font-black text-yellow-400">Nemokake Dalan Labirin!</h3>
-              <p className="text-xs sm:text-sm text-stone-300 font-serif leading-relaxed">
-                Kanthi tetep bebarengan lan mlaku alon-alon, Putri Rara Kuning lan Putri Rara Runting kasil nemokake gerbang dalan labirin tanpa kesasar!
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-                <button
-                  type="button"
-                  onClick={reset}
-                  className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-                >
-                  Baleni 🔄
-                </button>
-                <Link
-                  href="/level2/gladhen"
-                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-                >
-                  🪶 Lanjut menyang Gladhen Nulis →
-                </Link>
-              </div>
-            </div>
+          <div
+            className={`relative flex items-end ${isMoving ? '' : 'anim-idle-soft'}`}
+            style={{
+              transform: facingLeft ? 'scaleX(-1)' : 'scaleX(1)',
+              transition: 'transform 0.14s ease-out',
+            }}
+          >
+            <div
+              aria-label="Putri Rara Kuning"
+              style={{
+                height: 'clamp(76px, 21vh, 146px)',
+                aspectRatio: '143 / 338',
+                backgroundImage: "url('/assets/level2/pixel-walk-kuning.png')",
+                backgroundSize: '600% 100%',
+                backgroundPosition: `${kuningFramePct}% 0%`,
+                backgroundRepeat: 'no-repeat',
+                imageRendering: 'pixelated',
+                filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
+              }}
+            />
+            <div
+              aria-label="Putri Rara Runting"
+              className="-ml-2"
+              style={{
+                height: 'clamp(74px, 20.4vh, 142px)',
+                aspectRatio: '155 / 329',
+                backgroundImage: "url('/assets/level2/pixel-walk-runting.png')",
+                backgroundSize: '600% 100%',
+                backgroundPosition: `${runtingFramePct}% 0%`,
+                backgroundRepeat: 'no-repeat',
+                imageRendering: 'pixelated',
+                filter: 'drop-shadow(0 6px 10px rgba(0,0,0,0.82))',
+              }}
+            />
           </div>
-        )}
+        </div>
+
+        {/* KONTROLER ANALOG 360° MULUS */}
+        <AnalogJoystick
+          onChange={(v) => {
+            analogRef.current = v;
+          }}
+        />
       </div>
 
       {toast && (

@@ -164,9 +164,7 @@ export default function Level2NgolahJamuPage() {
 
       if (isAllDone) {
         recordLevel2Mission(supabase, 'ngolah');
-        setTimeout(() => {
-          router.push('/level2/ngunjuk');
-        }, 850);
+        router.push('/level2/ngunjuk');
       }
     },
     [completedSteps, playStepTone, router, supabase]
