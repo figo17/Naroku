@@ -13,7 +13,7 @@ const NGOLAH_STEPS = [
     step: 1,
     title: 'Resikna godhong-godhongé',
     icon: '💧',
-    desc: 'Godhong Tapak Liman, Sirih, Sambiloto, lan Mindi dikumbah resik nganggo banyu suci supaya ilang regedané.',
+    desc: 'Gegodhongan jamu dikumbah resik nganggo banyu suci supaya ilang regedané.',
     rowTop: '24.8%',
   },
   {
@@ -41,28 +41,28 @@ const NGOLAH_STEPS = [
 
 const BASKET_ITEMS = [
   {
-    id: 'tapak_liman',
-    name: 'Godhong Tapak Liman',
+    id: 'andong',
+    name: 'Godhong Andong',
     left: '5.5%',
-    info: '🍃 Godhong Tapak Liman (3/3): Ngudhunake panas benter lan ngempiske gondhok.',
+    info: '🍃 Godhong Andong: Ngudhunake benter lan mbiyantu ngempiske abuh gondhok.',
   },
   {
     id: 'sirih',
     name: 'Godhong Sirih',
     left: '20.0%',
-    info: '🍃 Godhong Sirih (3/3): Ngresiki kuman kulit lan ngurangi gatel-gatel.',
+    info: '🍃 Godhong Sirih: Ngresiki kuman kulit lan ngurangi gatel-gatel.',
   },
   {
     id: 'sambiloto',
     name: 'Godhong Sambiloto',
     left: '33.2%',
-    info: '🍃 Godhong Sambiloto (3/3): Jamu pait kang mandi kanggo marasake lelara kuning.',
+    info: '🍃 Godhong Sambiloto: Jamu pait kang mandi kanggo marasake lelara kuning.',
   },
   {
-    id: 'mindi',
-    name: 'Godhong Mindi',
+    id: 'meniran',
+    name: 'Godhong Meniran',
     left: '46.5%',
-    info: '🍃 Godhong Mindi (3/3): Marasake kulit sisik lan ngresiki racun awak.',
+    info: '🍃 Godhong Meniran: Nguwatake daya tahan awak lan marasake lelara kulit.',
   },
 ];
 
@@ -71,15 +71,17 @@ export default function Level2NgolahJamuPage() {
   const supabase = createClient();
   const audioCtxRef = useRef(null);
   const navLockRef = useRef(false);
+  const boostTimerRef = useRef(null);
 
   const [loading, setLoading] = useState(true);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]); // [1, 2, 3, 4]
+  const [resiFrame, setResiFrame] = useState(0); // 0..5 (6-frame animasi ngulek jamu)
+  const [fastPound, setFastPound] = useState(false);
   const [toast, setToast] = useState(null);
 
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showDoneModal, setShowDoneModal] = useState(false);
 
   useEffect(() => {
     router.prefetch('/level2/ngunjuk');
@@ -91,11 +93,32 @@ export default function Level2NgolahJamuPage() {
       .finally(() => setLoading(false));
   }, [router, supabase]);
 
+  // Loop Animasi 6-Frame Resi Darmo Ngulek Jamu
+  useEffect(() => {
+    const intervalMs = fastPound ? 75 : 135;
+    const timer = setInterval(() => {
+      setResiFrame((prev) => (prev + 1) % 6);
+    }, intervalMs);
+    return () => clearInterval(timer);
+  }, [fastPound]);
+
+  useEffect(() => {
+    return () => {
+      if (boostTimerRef.current) clearTimeout(boostTimerRef.current);
+    };
+  }, []);
+
   useEffect(() => {
     if (!toast) return;
     const t = setTimeout(() => setToast(null), 3400);
     return () => clearTimeout(t);
   }, [toast]);
+
+  const triggerPoundBurst = useCallback(() => {
+    setFastPound(true);
+    if (boostTimerRef.current) clearTimeout(boostTimerRef.current);
+    boostTimerRef.current = setTimeout(() => setFastPound(false), 1200);
+  }, []);
 
   const playStepTone = useCallback((stepNum = 1, isFinal = false) => {
     if (typeof window === 'undefined') return;
@@ -131,7 +154,7 @@ export default function Level2NgolahJamuPage() {
 
   const handleTriggerStep = useCallback(
     (stepObj) => {
-      // Enforce sequential order 1 -> 2 -> 3 -> 4 for educational clarity
+      triggerPoundBurst();
       const expectedNext = completedSteps.length + 1;
 
       if (completedSteps.includes(stepObj.step)) {
@@ -167,7 +190,7 @@ export default function Level2NgolahJamuPage() {
         router.push('/level2/ngunjuk');
       }
     },
-    [completedSteps, playStepTone, router, supabase]
+    [completedSteps, playStepTone, router, supabase, triggerPoundBurst]
   );
 
   const handleAdvanceNextStep = useCallback(() => {
@@ -181,7 +204,7 @@ export default function Level2NgolahJamuPage() {
 
   useEffect(() => {
     const onKeyDown = (e) => {
-      if (showStoryModal || showHelpModal || showDoneModal) return;
+      if (showStoryModal || showHelpModal) return;
       if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'KeyD') {
         e.preventDefault();
         handleAdvanceNextStep();
@@ -189,7 +212,7 @@ export default function Level2NgolahJamuPage() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [handleAdvanceNextStep, showDoneModal, showHelpModal, showStoryModal]);
+  }, [handleAdvanceNextStep, showHelpModal, showStoryModal]);
 
   if (loading) {
     return (
@@ -202,18 +225,52 @@ export default function Level2NgolahJamuPage() {
 
   const nextStepNum = completedSteps.length + 1;
   const allStepsDone = completedSteps.length === NGOLAH_STEPS.length;
+  const resiFramePct = (resiFrame / 5) * 100;
 
   return (
     <div className="relative w-screen h-screen bg-[#120b05] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
+      {/* Preload Spritesheet 6-Frame Resi Darmo */}
+      <div className="hidden" aria-hidden="true">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/assets/level2/resi-ngolah-sheet.png" alt="" />
+      </div>
+
       {/* Container 16:9 (1024 x 576) */}
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl select-none">
+        {/* LAYER 1: Background Bersih Tanpa Kakek */}
         <Image
-          src="/assets/level2/screen_ngolah_jamu.jpg"
+          src="/assets/level2/screen_ngolah_clean.jpg"
           alt="Lv 2 – Ngolah Jamu Tradhisional Resi Darmo"
           fill
           priority
           sizes="100vw"
-          className="object-contain object-center"
+          className="object-contain object-center z-0"
+        />
+
+        {/* LAYER 2: Sprite Animasi 6-Frame Resi Darmo Ngulek Jamu (Persis Koordinat Acuan) */}
+        <div
+          aria-label="Resi Darmo Ngulek Gegodhongan Jamu"
+          className="absolute pointer-events-none z-10"
+          style={{
+            left: '32.3%',
+            top: '22.6%',
+            width: '27.0%',
+            height: '61.3%',
+            backgroundImage: "url('/assets/level2/resi-ngolah-sheet.png')",
+            backgroundSize: '600% 100%',
+            backgroundPosition: `${resiFramePct}% 0%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+
+        {/* LAYER 3: Masking Meja Ngarep, Mangkok Kayu & Kendhil Cilik supaya nutupi ngisor lumpang kanthi alami */}
+        <Image
+          src="/assets/level2/screen_ngolah_fg.png"
+          alt=""
+          fill
+          priority
+          sizes="100vw"
+          className="object-contain object-center pointer-events-none z-15"
         />
 
         {/* ========================================================
@@ -255,19 +312,12 @@ export default function Level2NgolahJamuPage() {
           <span className="sr-only">Audio</span>
         </button>
 
-        {/* Balon Dialog Resi Darmo */}
-        <div
-          onClick={() => setShowStoryModal(true)}
-          title="Klik kanggo maca dhawuhe Resi Darmo"
-          className="absolute left-[16.8%] top-[10.5%] w-[32.5%] h-[25.5%] rounded-3xl bg-transparent hover:bg-yellow-400/10 cursor-pointer z-20 transition-all"
-        />
-
-        {/* Interaktif Lumpang Watu (Tahap 3) & Kendhil Geni (Tahap 4) */}
+        {/* Interaktif Resi Darmo & Lumpang Watu (Tahap 3) & Kendhil Geni (Tahap 4) */}
         <button
           type="button"
           onClick={() => handleTriggerStep(NGOLAH_STEPS[2])}
-          title="Lumpang Watu: Ulek nganti halus (Tahap 3)"
-          className="absolute left-[38.0%] top-[51.5%] w-[14.2%] h-[23.5%] rounded-2xl bg-transparent hover:bg-yellow-300/15 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-20 transition-all"
+          title="Resi Darmo & Lumpang Watu: Ulek nganti halus (Tahap 3)"
+          className="absolute left-[36.5%] top-[28.0%] w-[19.0%] h-[44.5%] rounded-2xl bg-transparent hover:bg-yellow-300/10 hover:ring-2 hover:ring-yellow-300/60 cursor-pointer z-25 transition-all"
         >
           <span className="sr-only">Ulek Jamu</span>
         </button>
@@ -276,7 +326,7 @@ export default function Level2NgolahJamuPage() {
           type="button"
           onClick={() => handleTriggerStep(NGOLAH_STEPS[3])}
           title="Kendhil Geni: Rebus karo banyu nganti mateng (Tahap 4)"
-          className="absolute left-[57.0%] top-[55.5%] w-[13.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-20 transition-all"
+          className="absolute left-[57.0%] top-[55.5%] w-[13.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-25 transition-all"
         >
           <span className="sr-only">Rebus Jamu</span>
         </button>
@@ -288,7 +338,10 @@ export default function Level2NgolahJamuPage() {
           <button
             key={item.id}
             type="button"
-            onClick={() => setToast({ type: 'info', text: item.info })}
+            onClick={() => {
+              triggerPoundBurst();
+              setToast({ type: 'info', text: item.info });
+            }}
             style={{ left: item.left }}
             title={item.name}
             className="absolute top-[73.5%] w-[13.2%] h-[22.5%] rounded-2xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-25 transition-all"
@@ -331,7 +384,6 @@ export default function Level2NgolahJamuPage() {
 
         {/* ========================================================
             KONTROL & TOMBOL AKSI ING POJOK TENGEN NGISOR
-            (Ora nutupi 4 keranjang godhong ing kiwa ngisor!)
            ======================================================== */}
         <AnalogJoystick
           className="absolute right-[24.2%] bottom-[2.2%] w-[8.5%] h-[14.2%] min-w-[58px] min-h-[58px] z-35"
@@ -393,38 +445,6 @@ export default function Level2NgolahJamuPage() {
         </div>
       )}
 
-      {/* Modal Rampung Ngolah Jamu */}
-      {showDoneModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md font-sans">
-          <div className="relative max-w-md w-full bg-stone-900 border-2 border-yellow-500/90 rounded-2xl p-6 shadow-2xl text-stone-100 text-center space-y-4">
-            <div className="w-16 h-16 mx-auto rounded-full bg-emerald-500/20 border-2 border-emerald-400 flex items-center justify-center text-3xl shadow-lg animate-bounce">
-              🍵
-            </div>
-            <h3 className="text-xl font-serif font-black text-yellow-400">
-              Jamu Tradhisional Resi Darmo Wis Mateng!
-            </h3>
-            <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              Kanthi urut lan tliti (diresiki, diiris cilik-cilik, diulek alus, lan digodhog nganti mateng), racikan <strong>Tapak Liman, Sirih, Sambiloto, lan Mindi</strong> wis dadi jamu usada kanggo nambani Rara Kuning lan Rara Runting!
-            </p>
-            <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-1">
-              <button
-                type="button"
-                onClick={() => setShowDoneModal(false)}
-                className="px-4 py-2.5 rounded-xl bg-stone-800 hover:bg-stone-700 border border-stone-600 text-stone-300 text-xs font-bold cursor-pointer"
-              >
-                Deleng Adegan
-              </button>
-              <Link
-                href="/level2/ngunjuk"
-                className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg"
-              >
-                🥣 Lanjut Nglunjuk Jamu →
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Modal Kawruh Ngolah Jamu */}
       {showStoryModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-950/85 backdrop-blur-md font-sans">
@@ -465,7 +485,7 @@ export default function Level2NgolahJamuPage() {
             <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
               1. Klik urut <strong>Tahap 1 nganti Tahap 4</strong> ing panel <em>Tahap Ngolah Jamu</em> sisih tengen (utawa pencet tombol kuning ing tengen ngisor).<br />
               2. Sampeyan uga bisa ngeklik 4 keranjang godhong ing meja kanggo nyumurupi khasiate.<br />
-              3. Sawise kabeh 4 tahap rampung, jamu siap diunjuk kanggo marasake para putri!
+              3. Sawise kabeh 4 tahap rampung, langsung nyambung menyang adegan ngunjuk jamu!
             </p>
             <div className="flex justify-end pt-1">
               <button
