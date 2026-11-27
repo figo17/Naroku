@@ -28,6 +28,7 @@ export default function Level3PiyeulanPage() {
   const [toast, setToast] = useState(null);
 
   useEffect(() => {
+    router.prefetch('/level3/piwulang');
     async function load() {
       try {
         const {
@@ -238,13 +239,21 @@ export default function Level3PiyeulanPage() {
             ✓ Dicenthang: <span className="text-yellow-300">{answeredCount}/10</span>
           </div>
           {isChecked && (
-            <button
-              type="button"
-              onClick={() => setShowResultModal(true)}
-              className="px-2.5 py-1 rounded-full bg-emerald-800 hover:bg-emerald-700 border border-emerald-300 text-emerald-50 text-[10px] sm:text-xs font-black shadow-md cursor-pointer"
-            >
-              📊 Skor: {currentScore}/10
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={() => setShowResultModal(true)}
+                className="px-2.5 py-1 rounded-full bg-emerald-800 hover:bg-emerald-700 border border-emerald-300 text-emerald-50 text-[10px] sm:text-xs font-black shadow-md cursor-pointer"
+              >
+                📊 Skor: {currentScore}/10
+              </button>
+              <Link
+                href="/level3/piwulang"
+                className="px-2.5 py-1 rounded-full bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 border border-yellow-100 text-stone-950 text-[10px] sm:text-xs font-black shadow-md"
+              >
+                📜 Piwulang ➜
+              </Link>
+            </>
           )}
         </div>
 
@@ -448,10 +457,10 @@ export default function Level3PiyeulanPage() {
                   🏆 Galeri Apresiasi
                 </Link>
                 <Link
-                  href="/peta"
-                  className="px-5 py-2 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-stone-950 font-black text-xs shadow-lg"
+                  href="/level3/piwulang"
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-yellow-400 to-amber-500 hover:from-yellow-300 hover:to-amber-400 text-stone-950 font-black text-xs sm:text-sm shadow-lg animate-pulse"
                 >
-                  🗺️ Rampung — Bali menyang Peta
+                  📜 Lanjut menyang Piwulang ➜
                 </Link>
               </div>
             </div>
