@@ -356,7 +356,10 @@ export default function Level1OrientasiTokohPage() {
         CONTAINER UTAMA 16:9 (1024 x 576)
         Menjamin 100% presisi posisi checkbox, textarea, dan tombol di layar apa pun
       */}
-      <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
+      <div
+        className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl"
+        style={{ containerType: 'size' }}
+      >
         
         {/* ========================================================
             TAHAP 1: CENTHANG CIRI-CIRI TOKOH (CAROUSEL)
@@ -462,48 +465,86 @@ export default function Level1OrientasiTokohPage() {
               className="absolute left-[23.6%] top-[45.5%] w-[3.5%] h-[6.5%] rounded-full bg-transparent hover:bg-yellow-400/20 hover:ring-2 hover:ring-yellow-300/60 active:scale-90 transition-all cursor-pointer z-30"
             />
 
-            {/* Checkbox Rows (5 Opsi Ciri-ciri) */}
+            {/* Checkbox Rows (5 Opsi Ciri-ciri – Presisi Persis ing Tengah Saben Kothak) */}
             {currentChar.options.map((optionText, idx) => {
               const isChecked = currentSelected.includes(idx);
               const isCorrect = currentChar.correctIndices.includes(idx);
-              const rowPos = rowPositions[idx] || rowPositions[0];
+              const centerX = currentChar.boxCenterX ?? 72.31;
+              const centerY = currentChar.boxCentersY?.[idx] ?? (41.32 + idx * 5.66);
 
               return (
-                <div
-                  key={idx}
-                  onClick={() => handleToggleOption(idx)}
-                  className="absolute left-[70.2%] w-[24.2%] z-20 cursor-pointer group flex items-center select-none"
-                  style={{ top: rowPos.top, height: rowPos.height }}
-                >
-                  <div className="absolute left-[1.1%] w-[9.5%] aspect-square rounded-md flex items-center justify-center transition-all group-hover:ring-1 group-hover:ring-yellow-400/60">
+                <React.Fragment key={idx}>
+                  {/* Hitbox Baris Penuh (Kothak + Teks Pilihan) */}
+                  <button
+                    type="button"
+                    onClick={() => handleToggleOption(idx)}
+                    title={optionText}
+                    style={{
+                      left: '71.2%',
+                      top: `${centerY}%`,
+                      width: '22.8%',
+                      height: '4.4%',
+                    }}
+                    className="absolute -translate-y-1/2 z-20 cursor-pointer rounded-lg bg-transparent hover:bg-yellow-400/10 transition-colors flex items-center justify-end pr-2 select-none"
+                  >
+                    {isSubmitted && isChecked && (
+                      <span
+                        className={`px-2 py-0.5 rounded text-[9px] sm:text-[10px] font-bold tracking-wider ${
+                          isCorrect
+                            ? 'bg-emerald-950/95 text-emerald-300 border border-emerald-500/70'
+                            : 'bg-red-950/95 text-red-300 border border-red-500/70'
+                        }`}
+                      >
+                        {isCorrect ? '✓ Bener' : '✗ Salah'}
+                      </span>
+                    )}
+                    <span className="sr-only">{optionText}</span>
+                  </button>
+
+                  {/* Tanda Centhang Persis ing Tengah Kothak Gambar */}
+                  <div
+                    style={{
+                      left: `${centerX}%`,
+                      top: `${centerY}%`,
+                      width: '2.05%',
+                      height: '3.65%',
+                    }}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 z-25 pointer-events-none rounded-[4px] flex items-center justify-center ${
+                      isChecked
+                        ? isSubmitted
+                          ? isCorrect
+                            ? 'bg-emerald-500/20 ring-1 ring-emerald-400'
+                            : 'bg-red-500/20 ring-1 ring-red-400'
+                          : 'bg-yellow-400/15'
+                        : ''
+                    }`}
+                  >
                     {isChecked && !isSubmitted && (
-                      <span className="text-yellow-400 text-lg sm:text-2xl font-black drop-shadow">
+                      <span
+                        className="text-yellow-300 font-black leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                        style={{ fontSize: '2.5cqh' }}
+                      >
                         ✓
                       </span>
                     )}
                     {isSubmitted && isChecked && isCorrect && (
-                      <span className="text-emerald-400 text-lg sm:text-2xl font-black drop-shadow animate-bounce">
+                      <span
+                        className="text-emerald-300 font-black leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                        style={{ fontSize: '2.5cqh' }}
+                      >
                         ✓
                       </span>
                     )}
                     {isSubmitted && isChecked && !isCorrect && (
-                      <span className="text-red-500 text-lg sm:text-2xl font-black drop-shadow">
+                      <span
+                        className="text-red-400 font-black leading-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]"
+                        style={{ fontSize: '2.4cqh' }}
+                      >
                         ✗
                       </span>
                     )}
                   </div>
-                  {isSubmitted && isChecked && (
-                    <div
-                      className={`ml-auto mr-2 px-2 py-0.5 rounded text-[10px] font-bold tracking-wider ${
-                        isCorrect
-                          ? 'bg-emerald-950/90 text-emerald-300 border border-emerald-500/60'
-                          : 'bg-red-950/90 text-red-300 border border-red-500/60'
-                      }`}
-                    >
-                      {isCorrect ? '✓ Bener' : '✗ Salah'}
-                    </div>
-                  )}
-                </div>
+                </React.Fragment>
               );
             })}
 

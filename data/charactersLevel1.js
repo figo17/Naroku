@@ -30,6 +30,8 @@ export const charactersLevel1 = [
       'Nandhang lara gondhok.',
       'Putri Patih Lembu Amiseno.',
     ],
+    boxCenterX: 72.31,
+    boxCentersY: [41.41, 46.96, 52.60, 58.25, 63.98],
   },
   {
     id: 'rara_runting',
@@ -58,6 +60,8 @@ export const charactersLevel1 = [
       'Adhite Rara Kuning.',
       'Nandhang lara kuning.',
     ],
+    boxCenterX: 72.36,
+    boxCentersY: [41.32, 46.88, 52.52, 58.25, 63.98],
   },
   {
     id: 'resi_darmo',
@@ -86,6 +90,8 @@ export const charactersLevel1 = [
       'Rambut gondhel lan jenggot putih.',
       'Duwe ilmu obat-obatan.',
     ],
+    boxCenterX: 72.27,
+    boxCentersY: [41.32, 46.88, 52.52, 58.25, 63.98],
   },
   {
     id: 'lembu_amiseno',
@@ -113,5 +119,7 @@ export const charactersLevel1 = [
       'Bapake Rara Kuning lan Rara Runting.',
       'Raja utawa patih ing Karajaan Daha.',
     ],
+    boxCenterX: 72.31,
+    boxCentersY: [41.15, 46.61, 52.08, 57.64, 63.11],
   },
 ];
