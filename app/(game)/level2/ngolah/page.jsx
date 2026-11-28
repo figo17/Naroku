@@ -69,19 +69,34 @@ const BASKET_ITEMS = [
 export default function Level2NgolahJamuPage() {
   const router = useRouter();
   const supabase = createClient();
+
   const audioCtxRef = useRef(null);
-  const navLockRef = useRef(false);
-  const boostTimerRef = useRef(null);
+  const lastUlekSoundRef = useRef(0);
+  const analogRef = useRef({ x: 0, y: 0, active: false });
+  const prevInputRef = useRef({ x: 0, y: 0 });
+  const ulekAccumRef = useRef(0);
+  const prevFrameRef = useRef(0);
+  const ulekProgressRef = useRef(0);
+  const completedStepsRef = useRef([]);
+  const ulekHintShownRef = useRef(false);
+  const grindStopTimerRef = useRef(null);
+  const lastFleckTimeRef = useRef(0);
 
   const [loading, setLoading] = useState(true);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const [completedSteps, setCompletedSteps] = useState([]); // [1, 2, 3, 4]
-  const [resiFrame, setResiFrame] = useState(0); // 0..5 (6-frame animasi ngulek jamu)
-  const [fastPound, setFastPound] = useState(false);
+  const [resiFrame, setResiFrame] = useState(0); // 0..5 dikontrol langsung saka Analog
+  const [ulekProgress, setUlekProgress] = useState(0); // 0..100%
+  const [isGrinding, setIsGrinding] = useState(false);
+  const [herbFlecks, setHerbFlecks] = useState([]);
   const [toast, setToast] = useState(null);
 
   const [showStoryModal, setShowStoryModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+
+  useEffect(() => {
+    completedStepsRef.current = completedSteps;
+  }, [completedSteps]);
 
   useEffect(() => {
     router.prefetch('/level2/ngunjuk');
@@ -93,31 +108,40 @@ export default function Level2NgolahJamuPage() {
       .finally(() => setLoading(false));
   }, [router, supabase]);
 
-  // Loop Animasi 6-Frame Resi Darmo Ngulek Jamu
-  useEffect(() => {
-    const intervalMs = fastPound ? 75 : 135;
-    const timer = setInterval(() => {
-      setResiFrame((prev) => (prev + 1) % 6);
-    }, intervalMs);
-    return () => clearInterval(timer);
-  }, [fastPound]);
-
-  useEffect(() => {
-    return () => {
-      if (boostTimerRef.current) clearTimeout(boostTimerRef.current);
-    };
-  }, []);
-
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 3400);
+    const t = setTimeout(() => setToast(null), 3200);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const triggerPoundBurst = useCallback(() => {
-    setFastPound(true);
-    if (boostTimerRef.current) clearTimeout(boostTimerRef.current);
-    boostTimerRef.current = setTimeout(() => setFastPound(false), 1200);
+  const playUlekSound = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    const nowMs = performance.now();
+    if (nowMs - lastUlekSoundRef.current < 145) return;
+    lastUlekSoundRef.current = nowMs;
+
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (!audioCtxRef.current && AudioCtx) audioCtxRef.current = new AudioCtx();
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
+      if (ctx.state === 'suspended') ctx.resume();
+
+      const now = ctx.currentTime;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(145, now);
+      osc.frequency.exponentialRampToValueAtTime(62, now + 0.085);
+      gain.gain.setValueAtTime(0.16, now);
+      gain.gain.exponentialRampToValueAtTime(0.008, now + 0.095);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(now);
+      osc.stop(now + 0.1);
+    } catch {
+      // Ignore audio restriction
+    }
   }, []);
 
   const playStepTone = useCallback((stepNum = 1, isFinal = false) => {
@@ -152,12 +176,164 @@ export default function Level2NgolahJamuPage() {
     }
   }, []);
 
+  const finalizeStep3IfReady = useCallback(
+    (currentSteps, progVal) => {
+      if (
+        progVal >= 100 &&
+        currentSteps.includes(1) &&
+        currentSteps.includes(2) &&
+        !currentSteps.includes(3)
+      ) {
+        const nextSteps = [...currentSteps, 3];
+        completedStepsRef.current = nextSteps;
+        setCompletedSteps(nextSteps);
+        playStepTone(3, false);
+        setToast({
+          type: 'success',
+          text: '🪨 Tahap 3 rampung: Gegodhongan wis alus diulek! Lanjut klik Tahap 4 (Rebus jamu)!',
+        });
+        return true;
+      }
+      return false;
+    },
+    [playStepTone]
+  );
+
+  // Loop Kontrol Analog & Keyboard kanggo Ngulek Jamu (6-Frame Resi Darmo)
+  useEffect(() => {
+    if (loading) return;
+    const activeKeys = new Set();
+    const keyVec = {
+      ArrowUp: [0, -1],
+      KeyW: [0, -1],
+      ArrowDown: [0, 1],
+      KeyS: [0, 1],
+      ArrowLeft: [-1, 0],
+      KeyA: [-1, 0],
+      ArrowRight: [1, 0],
+      KeyD: [1, 0],
+    };
+
+    let rafId = null;
+    let lastTime = performance.now();
+
+    const loop = (now) => {
+      const dtSec = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      let ax = analogRef.current.active ? analogRef.current.x : 0;
+      let ay = analogRef.current.active ? analogRef.current.y : 0;
+
+      if (!analogRef.current.active && activeKeys.size > 0) {
+        activeKeys.forEach((code) => {
+          const v = keyVec[code];
+          if (v) {
+            ax += v[0];
+            ay += v[1];
+          }
+        });
+        const kLen = Math.hypot(ax, ay);
+        if (kLen > 1) {
+          ax /= kLen;
+          ay /= kLen;
+        }
+      }
+
+      const mag = Math.min(1, Math.hypot(ax, ay));
+      const deltaMove = Math.hypot(ax - prevInputRef.current.x, ay - prevInputRef.current.y);
+      prevInputRef.current = { x: ax, y: ay };
+
+      const activelyMoving = analogRef.current.active || activeKeys.size > 0;
+      if (activelyMoving && (mag > 0.14 || deltaMove > 0.018)) {
+        setIsGrinding(true);
+        if (grindStopTimerRef.current) clearTimeout(grindStopTimerRef.current);
+        grindStopTimerRef.current = setTimeout(() => setIsGrinding(false), 180);
+
+        // Muter / goyangake analog nyepetake ulekan; nahan arah uga tetep ngulek alus
+        const frameInc = Math.min(
+          0.52,
+          deltaMove * 1.15 + (mag > 0.16 ? mag * 5.2 * dtSec : 0)
+        );
+
+        const prevCycleStep = Math.floor(ulekAccumRef.current / 3);
+        ulekAccumRef.current += frameInc;
+        const nextCycleStep = Math.floor(ulekAccumRef.current / 3);
+
+        const nextFrame = Math.floor(ulekAccumRef.current) % 6;
+        if (nextFrame !== prevFrameRef.current) {
+          prevFrameRef.current = nextFrame;
+          setResiFrame(nextFrame);
+        }
+
+        if (nextCycleStep !== prevCycleStep) {
+          playUlekSound();
+        }
+
+        if (now - lastFleckTimeRef.current > 190) {
+          lastFleckTimeRef.current = now;
+          const fid = `${Math.round(now)}-${Math.random().toString(36).slice(2, 6)}`;
+          const newFleck = {
+            id: fid,
+            dx: (Math.random() - 0.5) * 34,
+            dy: -(Math.random() * 24 + 10),
+            rot: Math.random() * 260,
+          };
+          setHerbFlecks((prev) => [...prev.slice(-7), newFleck]);
+        }
+
+        if (ulekProgressRef.current < 100) {
+          const prevFloor = Math.floor(ulekProgressRef.current);
+          const nextProg = Math.min(100, ulekProgressRef.current + frameInc * 4.2);
+          ulekProgressRef.current = nextProg;
+          const nextFloor = Math.floor(nextProg);
+
+          if (nextFloor !== prevFloor || nextProg >= 100) {
+            setUlekProgress(nextFloor);
+          }
+
+          if (nextProg >= 100) {
+            const didComplete = finalizeStep3IfReady(completedStepsRef.current, 100);
+            if (!didComplete && !ulekHintShownRef.current) {
+              ulekHintShownRef.current = true;
+              setToast({
+                type: 'info',
+                text: '✨ Ulekan jamu wis alus (100%)! Klik urut Tahap 1, 2, lan 4 ing panel tengen ya!',
+              });
+            }
+          }
+        }
+      }
+
+      rafId = requestAnimationFrame(loop);
+    };
+
+    const onKeyDown = (e) => {
+      if (showStoryModal || showHelpModal) return;
+      if (keyVec[e.code]) {
+        e.preventDefault();
+        activeKeys.add(e.code);
+      }
+    };
+    const onKeyUp = (e) => activeKeys.delete(e.code);
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    rafId = requestAnimationFrame(loop);
+
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      if (rafId) cancelAnimationFrame(rafId);
+      if (grindStopTimerRef.current) clearTimeout(grindStopTimerRef.current);
+    };
+  }, [finalizeStep3IfReady, loading, playUlekSound, showHelpModal, showStoryModal]);
+
   const handleTriggerStep = useCallback(
     (stepObj) => {
-      triggerPoundBurst();
-      const expectedNext = completedSteps.length + 1;
+      const current = completedStepsRef.current;
+      const expectedNext = current.length + 1;
 
-      if (completedSteps.includes(stepObj.step)) {
+      if (current.includes(stepObj.step)) {
         setToast({
           type: 'info',
           text: `✓ Tahap ${stepObj.step} (${stepObj.title}) wis katindakake!`,
@@ -174,38 +350,68 @@ export default function Level2NgolahJamuPage() {
         return;
       }
 
-      const updated = [...completedSteps, stepObj.step];
+      // Tahap 3 wajib dikontrol nganggo Analog nganti ulekan 100%
+      if (stepObj.step === 3 && ulekProgressRef.current < 100) {
+        setToast({
+          type: 'warn',
+          text: `🕹️ Puter / obahna Analog ing ngisor kanggo ngulek jamu nganti alus (${Math.floor(
+            ulekProgressRef.current
+          )}%/100%)!`,
+        });
+        return;
+      }
+
+      let updated = [...current, stepObj.step];
+      // Yen bar ngrampungake Tahap 2 lan ulekan wis 100% sadurunge, Tahap 3 otomatis centhang pisan
+      if (stepObj.step === 2 && ulekProgressRef.current >= 100 && !updated.includes(3)) {
+        updated = [...updated, 3];
+      }
+
+      completedStepsRef.current = updated;
       setCompletedSteps(updated);
 
       const isAllDone = updated.length === NGOLAH_STEPS.length;
       playStepTone(stepObj.step, isAllDone);
 
-      setToast({
-        type: 'success',
-        text: `${stepObj.icon} Tahap ${stepObj.step}: ${stepObj.desc}`,
-      });
+      if (stepObj.step === 2 && updated.includes(3)) {
+        setToast({
+          type: 'success',
+          text: '🪨 Tahap 2 & Tahap 3 (Ulekan 100%) rampung! Saiki klik Tahap 4 (Rebus jamu)!',
+        });
+      } else if (stepObj.step === 2) {
+        setToast({
+          type: 'success',
+          text: '🔪 Tahap 2 rampung! Saiki puter Analog kanggo ngulek gegodhongan (Tahap 3)!',
+        });
+      } else {
+        setToast({
+          type: 'success',
+          text: `${stepObj.icon} Tahap ${stepObj.step}: ${stepObj.desc}`,
+        });
+      }
 
       if (isAllDone) {
         recordLevel2Mission(supabase, 'ngolah');
         router.push('/level2/ngunjuk');
       }
     },
-    [completedSteps, playStepTone, router, supabase, triggerPoundBurst]
+    [playStepTone, router, supabase]
   );
 
   const handleAdvanceNextStep = useCallback(() => {
-    if (completedSteps.length < NGOLAH_STEPS.length) {
-      handleTriggerStep(NGOLAH_STEPS[completedSteps.length]);
+    const current = completedStepsRef.current;
+    if (current.length < NGOLAH_STEPS.length) {
+      handleTriggerStep(NGOLAH_STEPS[current.length]);
     } else {
       recordLevel2Mission(supabase, 'ngolah');
       router.push('/level2/ngunjuk');
     }
-  }, [completedSteps, handleTriggerStep, router, supabase]);
+  }, [handleTriggerStep, router, supabase]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
       if (showStoryModal || showHelpModal) return;
-      if (e.code === 'Space' || e.code === 'Enter' || e.code === 'ArrowRight' || e.code === 'KeyD') {
+      if (e.code === 'Space' || e.code === 'Enter') {
         e.preventDefault();
         handleAdvanceNextStep();
       }
@@ -226,9 +432,17 @@ export default function Level2NgolahJamuPage() {
   const nextStepNum = completedSteps.length + 1;
   const allStepsDone = completedSteps.length === NGOLAH_STEPS.length;
   const resiFramePct = (resiFrame / 5) * 100;
+  const isStep3Active = nextStepNum === 3;
 
   return (
     <div className="relative w-screen h-screen bg-[#120b05] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
+      <style>{`
+        @keyframes herbFleckPop {
+          0%   { opacity: 0.95; transform: translate(0, 0) rotate(0deg) scale(1); }
+          100% { opacity: 0; transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) scale(0.45); }
+        }
+      `}</style>
+
       {/* Preload Spritesheet 6-Frame Resi Darmo */}
       <div className="hidden" aria-hidden="true">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -247,7 +461,7 @@ export default function Level2NgolahJamuPage() {
           className="object-contain object-center z-0"
         />
 
-        {/* LAYER 2: Sprite Animasi 6-Frame Resi Darmo Ngulek Jamu (Persis Koordinat Acuan) */}
+        {/* LAYER 2: Sprite Animasi 6-Frame Resi Darmo Ngulek Jamu (Dikontrol Analog) */}
         <div
           aria-label="Resi Darmo Ngulek Gegodhongan Jamu"
           className="absolute pointer-events-none z-10"
@@ -263,6 +477,22 @@ export default function Level2NgolahJamuPage() {
           }}
         />
 
+        {/* Cipratan Alus Godhong Jamu nalika Diulek nganggo Analog */}
+        {herbFlecks.map((fl) => (
+          <div
+            key={fl.id}
+            className="absolute z-[12] w-2 h-1.5 rounded-full bg-lime-500 border border-emerald-900 pointer-events-none"
+            style={{
+              left: '44.6%',
+              top: '56.2%',
+              '--dx': `${fl.dx}px`,
+              '--dy': `${fl.dy}px`,
+              '--rot': `${fl.rot}deg`,
+              animation: 'herbFleckPop 0.65s ease-out forwards',
+            }}
+          />
+        ))}
+
         {/* LAYER 3: Masking Meja Ngarep, Mangkok Kayu & Kendhil Cilik supaya nutupi ngisor lumpang kanthi alami */}
         <Image
           src="/assets/level2/screen_ngolah_fg.png"
@@ -270,8 +500,42 @@ export default function Level2NgolahJamuPage() {
           fill
           priority
           sizes="100vw"
-          className="object-contain object-center pointer-events-none z-15"
+          className="object-contain object-center pointer-events-none z-[15]"
         />
+
+        {/* ========================================================
+            BAR PROGRES NGULEK JAMU (DIKONTROL ANALOG)
+           ======================================================== */}
+        <div className="absolute left-[45.8%] top-[10.8%] -translate-x-1/2 z-30 pointer-events-none">
+          <div
+            className={`px-3 py-1.5 rounded-xl bg-stone-950/90 border shadow-2xl min-w-[165px] sm:min-w-[215px] transition-all ${
+              isGrinding
+                ? 'border-lime-400 shadow-[0_0_18px_rgba(163,230,53,0.5)] scale-[1.03]'
+                : isStep3Active
+                ? 'border-yellow-400 shadow-[0_0_16px_rgba(250,204,21,0.45)] animate-pulse'
+                : 'border-yellow-500/65'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2 text-[9px] sm:text-[11px] font-bold mb-1">
+              <span className="text-amber-200 whitespace-nowrap">
+                🕹️ Ngulek Jamu (Analog)
+              </span>
+              <span
+                className={
+                  ulekProgress >= 100 ? 'text-emerald-300 font-black' : 'text-yellow-300 font-black'
+                }
+              >
+                {ulekProgress}%
+              </span>
+            </div>
+            <div className="w-full h-2 bg-stone-800 rounded-full overflow-hidden border border-stone-700">
+              <div
+                className="h-full bg-gradient-to-r from-amber-500 via-lime-400 to-emerald-400 transition-all duration-100"
+                style={{ width: `${ulekProgress}%` }}
+              />
+            </div>
+          </div>
+        </div>
 
         {/* ========================================================
             TOP NAVBAR HITBOXES
@@ -316,8 +580,8 @@ export default function Level2NgolahJamuPage() {
         <button
           type="button"
           onClick={() => handleTriggerStep(NGOLAH_STEPS[2])}
-          title="Resi Darmo & Lumpang Watu: Ulek nganti halus (Tahap 3)"
-          className="absolute left-[36.5%] top-[28.0%] w-[19.0%] h-[44.5%] rounded-2xl bg-transparent hover:bg-yellow-300/10 hover:ring-2 hover:ring-yellow-300/60 cursor-pointer z-25 transition-all"
+          title="Resi Darmo & Lumpang Watu: Puter Analog kanggo ngulek nganti halus (Tahap 3)"
+          className="absolute left-[36.5%] top-[28.0%] w-[19.0%] h-[44.5%] rounded-2xl bg-transparent hover:bg-yellow-300/10 hover:ring-2 hover:ring-yellow-300/60 cursor-pointer z-[25] transition-all"
         >
           <span className="sr-only">Ulek Jamu</span>
         </button>
@@ -326,7 +590,7 @@ export default function Level2NgolahJamuPage() {
           type="button"
           onClick={() => handleTriggerStep(NGOLAH_STEPS[3])}
           title="Kendhil Geni: Rebus karo banyu nganti mateng (Tahap 4)"
-          className="absolute left-[57.0%] top-[55.5%] w-[13.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-25 transition-all"
+          className="absolute left-[57.0%] top-[55.5%] w-[13.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-[25] transition-all"
         >
           <span className="sr-only">Rebus Jamu</span>
         </button>
@@ -339,12 +603,11 @@ export default function Level2NgolahJamuPage() {
             key={item.id}
             type="button"
             onClick={() => {
-              triggerPoundBurst();
               setToast({ type: 'info', text: item.info });
             }}
             style={{ left: item.left }}
             title={item.name}
-            className="absolute top-[73.5%] w-[13.2%] h-[22.5%] rounded-2xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-25 transition-all"
+            className="absolute top-[73.5%] w-[13.2%] h-[22.5%] rounded-2xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-[25] transition-all"
           >
             <span className="sr-only">{item.name}</span>
           </button>
@@ -383,26 +646,30 @@ export default function Level2NgolahJamuPage() {
         })}
 
         {/* ========================================================
-            KONTROL & TOMBOL AKSI ING POJOK TENGEN NGISOR
+            ANALOG KONTROLER NGULEK JAMU & TOMBOL AKSI ING POJOK TENGEN NGISOR
            ======================================================== */}
+        <div
+          className={`absolute right-[22.4%] bottom-[20.8%] z-[35] pointer-events-none px-2 py-0.5 rounded-full border text-[8px] sm:text-[10px] font-bold whitespace-nowrap shadow-md transition-all ${
+            isStep3Active && ulekProgress < 100
+              ? 'bg-yellow-400 border-yellow-100 text-stone-950 animate-bounce'
+              : 'bg-stone-950/90 border-yellow-500/60 text-yellow-300'
+          }`}
+        >
+          🕹️ Puter Analog (Ngulek)
+        </div>
+
         <AnalogJoystick
-          className="absolute right-[24.2%] bottom-[2.2%] w-[8.5%] h-[14.2%] min-w-[58px] min-h-[58px] z-35"
-          onChange={({ x, active }) => {
-            if (!active) return;
-            if (x > 0.78 && !navLockRef.current) {
-              navLockRef.current = true;
-              handleAdvanceNextStep();
-              setTimeout(() => {
-                navLockRef.current = false;
-              }, 550);
-            } else if (x < -0.78 && !navLockRef.current) {
-              navLockRef.current = true;
-              router.push('/level2/jamu');
-            }
+          className={`absolute right-[22.5%] bottom-[1.8%] w-[11.0%] h-[18.2%] min-w-[74px] min-h-[74px] z-[35] ${
+            isStep3Active && ulekProgress < 100
+              ? 'ring-2 ring-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.65)]'
+              : ''
+          }`}
+          onChange={(v) => {
+            analogRef.current = v;
           }}
         />
 
-        <div className="absolute right-[1.8%] bottom-[2.6%] z-35 flex flex-col items-end gap-1.5">
+        <div className="absolute right-[1.8%] bottom-[2.6%] z-[35] flex flex-col items-end gap-1.5">
           <button
             type="button"
             onClick={handleAdvanceNextStep}
@@ -412,6 +679,10 @@ export default function Level2NgolahJamuPage() {
               <>
                 <span>🍵 Jamu Mateng — Banjur</span>
                 <span>▶</span>
+              </>
+            ) : isStep3Active && ulekProgress < 100 ? (
+              <>
+                <span>🕹️ Ngulek Analog ({ulekProgress}%)</span>
               </>
             ) : (
               <>
@@ -458,7 +729,10 @@ export default function Level2NgolahJamuPage() {
             <div className="space-y-2 text-xs sm:text-sm text-stone-300 font-serif">
               {NGOLAH_STEPS.map((s) => (
                 <p key={s.step}>
-                  <strong>{s.step}. {s.title}:</strong> {s.desc}
+                  <strong>
+                    {s.step}. {s.title}:
+                  </strong>{' '}
+                  {s.desc}
                 </p>
               ))}
             </div>
@@ -483,9 +757,9 @@ export default function Level2NgolahJamuPage() {
               <span>❓</span> Pituduh Ngolah Jamu
             </h3>
             <p className="text-xs sm:text-sm text-stone-300 leading-relaxed font-serif">
-              1. Klik urut <strong>Tahap 1 nganti Tahap 4</strong> ing panel <em>Tahap Ngolah Jamu</em> sisih tengen (utawa pencet tombol kuning ing tengen ngisor).<br />
-              2. Sampeyan uga bisa ngeklik 4 keranjang godhong ing meja kanggo nyumurupi khasiate.<br />
-              3. Sawise kabeh 4 tahap rampung, langsung nyambung menyang adegan ngunjuk jamu!
+              1. Klik urut <strong>Tahap 1</strong> lan <strong>Tahap 2</strong> ing panel <em>Tahap Ngolah Jamu</em> sisih tengen.<br />
+              2. Ing <strong>Tahap 3 (Ulek nganti halus)</strong>, puter utawa obahna <strong>Analog</strong> kanggo ngontrol Resi Darmo ngulek jamu nganti <strong>100%</strong>.<br />
+              3. Lanjut klik <strong>Tahap 4 (Rebus jamu)</strong> supaya langsung nyambung menyang adegan ngunjuk jamu!
             </p>
             <div className="flex justify-end pt-1">
               <button
