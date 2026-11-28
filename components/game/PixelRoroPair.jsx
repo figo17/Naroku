@@ -27,7 +27,7 @@ export default function PixelRoroPair({
     }
     const id = setInterval(() => {
       setAutoStep((s) => (s + 1) % 10);
-    }, 85);
+    }, 125);
     return () => clearInterval(id);
   }, [isWalking, stepIndex]);
 

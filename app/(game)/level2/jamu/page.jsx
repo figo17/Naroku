@@ -91,9 +91,11 @@ export default function Level2NgumpulakeJamuPage() {
   const audioCtxRef = useRef(null);
   const lastPickTimeRef = useRef({ tapak_liman: 0, sirih: 0, sambiloto: 0, mindi: 0 });
   const completedRef = useRef(false);
+  const readyToExitRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
   const [audioPlaying, setAudioPlaying] = useState(false);
+  const [readyToExit, setReadyToExit] = useState(false);
 
   const [charPos, setCharPos] = useState(START_POS);
   const charPosRef = useRef(START_POS);
@@ -224,14 +226,15 @@ export default function Level2NgumpulakeJamuPage() {
       }, 1100);
 
       const totalPicked = Object.values(updated).reduce((acc, v) => acc + v, 0);
-      if (totalPicked >= HERB_PLANTS.length * TARGET_PER_HERB && !completedRef.current) {
-        completedRef.current = true;
-        analogRef.current = { x: 0, y: 0, active: false };
+      if (totalPicked >= HERB_PLANTS.length * TARGET_PER_HERB && !readyToExitRef.current) {
+        readyToExitRef.current = true;
+        setReadyToExit(true);
         autoTargetRef.current = null;
-        setIsWalking(false);
         playVictorySound();
-        recordLevel2Mission(supabase, 'jamu');
-        router.push('/level2/ngolah');
+        setToast({
+          type: 'success',
+          text: '🌿 Jangkep 12 godhong jamu! Mlaku nganti mentok pucuk dalan ndhuwur kanggo bali ngolah jamu!',
+        });
       } else if (nextVal === TARGET_PER_HERB) {
         setToast({
           type: 'success',
@@ -241,26 +244,38 @@ export default function Level2NgumpulakeJamuPage() {
 
       return true;
     },
-    [playPickSound, playVictorySound, router, supabase]
+    [playPickSound, playVictorySound]
   );
 
   const stepMovement = useCallback(
     (dx, dy, fromAuto = false) => {
       if (completedRef.current) return;
 
-      if (dx < -0.04) setFacingLeft(true);
-      else if (dx > 0.04) setFacingLeft(false);
+      if (dx < -0.02) setFacingLeft(true);
+      else if (dx > 0.02) setFacingLeft(false);
 
       setIsWalking(true);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
-      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 150);
+      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 180);
 
       const prev = charPosRef.current;
+      const minY = readyToExitRef.current ? 28 : 36;
       const nx = Math.max(19, Math.min(67, prev.x + dx));
-      const ny = Math.max(36, Math.min(95, prev.y + dy));
+      const ny = Math.max(minY, Math.min(95, prev.y + dy));
       const next = { x: nx, y: ny };
       charPosRef.current = next;
       setCharPos(next);
+
+      if (readyToExitRef.current && ny <= 30.5 && !completedRef.current) {
+        completedRef.current = true;
+        analogRef.current = { x: 0, y: 0, active: false };
+        autoTargetRef.current = null;
+        setIsWalking(false);
+        playVictorySound();
+        recordLevel2Mission(supabase, 'jamu');
+        router.push('/level2/ngolah');
+        return;
+      }
 
       // Proximity harvest when 2D sprite walks near any glowing herb plant
       if (!fromAuto) {
@@ -272,10 +287,10 @@ export default function Level2NgumpulakeJamuPage() {
         }
       }
     },
-    [harvestHerb]
+    [harvestHerb, playVictorySound, router, supabase]
   );
 
-  // Main 60fps loop for 360° Analog + Keyboard + Click-to-Walk
+  // Main 60fps loop for 360° Analog + Keyboard + Click-to-Walk (kecepatan jalan diperlambat alus)
   useEffect(() => {
     const keys = new Set();
     const map = {
@@ -290,33 +305,44 @@ export default function Level2NgumpulakeJamuPage() {
     };
 
     let raf;
-    const loop = () => {
+    let lastTime = performance.now();
+    const SPEED_X = 16.5;
+    const SPEED_Y = 13.0;
+    const AUTO_SPEED = 17.5;
+
+    const loop = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
       if (!completedRef.current) {
-        let dx = analogRef.current.active ? analogRef.current.x * 0.62 : 0;
-        let dy = analogRef.current.active ? analogRef.current.y * 0.62 : 0;
+        let ix = analogRef.current.active ? analogRef.current.x : 0;
+        let iy = analogRef.current.active ? analogRef.current.y : 0;
         keys.forEach((k) => {
-          dx += map[k][0] * 0.58;
-          dy += map[k][1] * 0.58;
+          ix += map[k][0];
+          iy += map[k][1];
         });
 
-        if (Math.hypot(dx, dy) > 0.04) {
-          // Manual analog/keyboard overrides auto-walk
+        const mag = Math.hypot(ix, iy);
+        if (mag > 0.06) {
           autoTargetRef.current = null;
-          stepMovement(dx, dy, false);
+          const norm = mag > 1 ? 1 / mag : 1;
+          stepMovement(ix * norm * SPEED_X * dt, iy * norm * SPEED_Y * dt, false);
         } else if (autoTargetRef.current) {
           const target = autoTargetRef.current;
           const cur = charPosRef.current;
-          const vx = target.plant.walkX - cur.x;
-          const vy = target.plant.walkY - cur.y;
+          const tx = target.exit ? 53.5 : target.plant.walkX;
+          const ty = target.exit ? 29.0 : target.plant.walkY;
+          const vx = tx - cur.x;
+          const vy = ty - cur.y;
           const dist = Math.hypot(vx, vy);
 
-          if (dist <= 2.2) {
+          if (!target.exit && dist <= 2.2) {
             harvestHerb(target.plant, true);
             autoTargetRef.current = null;
             setIsWalking(false);
-          } else {
-            const speed = 0.72;
-            stepMovement((vx / dist) * speed, (vy / dist) * speed, true);
+          } else if (dist > 0.2) {
+            const step = AUTO_SPEED * dt;
+            stepMovement((vx / dist) * step, (vy / dist) * step, true);
           }
         }
       }
@@ -371,6 +397,8 @@ export default function Level2NgumpulakeJamuPage() {
 
   const handleReset = () => {
     completedRef.current = false;
+    readyToExitRef.current = false;
+    setReadyToExit(false);
     autoTargetRef.current = null;
     analogRef.current = { x: 0, y: 0, active: false };
     countsRef.current = { ...INITIAL_COUNTS };
@@ -398,7 +426,7 @@ export default function Level2NgumpulakeJamuPage() {
   const totalCollected = Object.values(counts).reduce((a, b) => a + b, 0);
   const totalTarget = HERB_PLANTS.length * TARGET_PER_HERB; // 12
   // Perspective scale along forest path (y: 36..95)
-  const depthScale = Math.max(0.68, Math.min(1.0, 0.68 + ((charPos.y - 36) / 59) * 0.32));
+  const depthScale = Math.max(0.5, Math.min(1.0, 0.5 + ((charPos.y - 28) / 67) * 0.5));
 
   return (
     <div className="relative w-screen h-screen bg-[#06150b] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
@@ -412,6 +440,21 @@ export default function Level2NgumpulakeJamuPage() {
           sizes="100vw"
           className="object-contain object-center"
         />
+
+        {readyToExit && (
+          <button
+            type="button"
+            onClick={() => {
+              autoTargetRef.current = { exit: true };
+            }}
+            className="absolute left-[53.5%] top-[27%] -translate-x-1/2 -translate-y-1/2 z-[32] flex flex-col items-center gap-1 cursor-pointer"
+          >
+            <div className="px-3 py-1 rounded-full bg-emerald-950/95 border-2 border-yellow-300 text-yellow-200 text-[9px] sm:text-[11px] font-black shadow-xl animate-bounce whitespace-nowrap">
+              🏯 Pucuk Dalan — Bali Ngolah Jamu ⬆
+            </div>
+            <div className="w-16 h-7 rounded-full border-2 border-dashed border-emerald-300 bg-emerald-400/20 animate-pulse" />
+          </button>
+        )}
 
         {/* ========================================================
             TOP NAVBAR HITBOXES

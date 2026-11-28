@@ -9,13 +9,9 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
-/*
-  STAGE FLOW (/level2/padhepokan - langsung nyambung saka /level2/gladhen):
-  Full background screen_padhepokan_polos.jpg (tanpa karakter cewek) + Sprite 2D Pixel Art
-  aktif langsung wiwit awal. Begitu tekan undhak-undhakan Padhepokan -> langsung pindah /level2/sowan.
-*/
-
 const START_POS = { x: 70.5, y: 95.0 };
+const SPEED_X = 16.5;
+const SPEED_Y = 13.0;
 
 export default function Level2PadhepokanPage() {
   const router = useRouter();
@@ -78,22 +74,29 @@ export default function Level2PadhepokanPage() {
     (dx, dy) => {
       if (enteredRef.current) return;
 
-      if (dx < -0.05) setFacingLeft(true);
-      else if (dx > 0.05) setFacingLeft(false);
+      if (dx < -0.02) setFacingLeft(true);
+      else if (dx > 0.02) setFacingLeft(false);
 
       setIsWalking(true);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
-      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 160);
+      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 180);
 
       const prev = charPosRef.current;
-      const nx = Math.max(24, Math.min(82, prev.x + dx));
-      const ny = Math.max(60, Math.min(96, prev.y + dy));
+      let nx = Math.max(22, Math.min(82, prev.x + dx));
+      let ny = Math.max(53, Math.min(96, prev.y + dy));
+
+      // Pagar pendhapa kiwa-tengen: mung liwat undhak-undhakan tengah (38..50) sing bisa munggah mlebu lawang jero
+      if (ny < 68 && (nx < 38 || nx > 50)) {
+        if (prev.y >= 68) ny = 68;
+        else nx = nx < 38 ? 38 : 50;
+      }
+
       const next = { x: nx, y: ny };
       charPosRef.current = next;
       setCharPos(next);
 
-      // Sampai di undhak-undhakan / pintu tengah Padhepokan (x: 36..52, y: 60..72) -> langsung pindah scene!
-      if (nx >= 36 && nx <= 52 && ny >= 60 && ny <= 72 && !enteredRef.current) {
+      // Munggah undhak-undhakan nganti mentok mlebu lawang jero Padhepokan (y <= 55.0)
+      if (nx >= 38 && nx <= 50 && ny <= 55.0 && !enteredRef.current) {
         enteredRef.current = true;
         stopAnalog();
         setIsWalking(false);
@@ -108,21 +111,34 @@ export default function Level2PadhepokanPage() {
   useEffect(() => {
     const keys = new Set();
     const map = {
-      ArrowUp: [0, -1], KeyW: [0, -1],
-      ArrowDown: [0, 1], KeyS: [0, 1],
-      ArrowLeft: [-1, 0], KeyA: [-1, 0],
-      ArrowRight: [1, 0], KeyD: [1, 0],
+      ArrowUp: [0, -1],
+      KeyW: [0, -1],
+      ArrowDown: [0, 1],
+      KeyS: [0, 1],
+      ArrowLeft: [-1, 0],
+      KeyA: [-1, 0],
+      ArrowRight: [1, 0],
+      KeyD: [1, 0],
     };
     let raf;
-    const loop = () => {
+    let lastTime = performance.now();
+
+    const loop = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
       if (!enteredRef.current) {
-        let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
-        let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
+        let ix = analogRef.current.active ? analogRef.current.x : 0;
+        let iy = analogRef.current.active ? analogRef.current.y : 0;
         keys.forEach((k) => {
-          dx += map[k][0] * 0.6;
-          dy += map[k][1] * 0.6;
+          ix += map[k][0];
+          iy += map[k][1];
         });
-        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+        const mag = Math.hypot(ix, iy);
+        if (mag > 0.06) {
+          const norm = mag > 1 ? 1 / mag : 1;
+          moveCharacter(ix * norm * SPEED_X * dt, iy * norm * SPEED_Y * dt);
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -153,12 +169,11 @@ export default function Level2PadhepokanPage() {
     );
   }
 
-  const depthScale = Math.max(0.64, Math.min(1.06, 0.64 + ((charPos.y - 60) / 36) * 0.42));
+  const depthScale = Math.max(0.46, Math.min(1.06, 0.46 + ((charPos.y - 53) / 42) * 0.6));
 
   return (
     <div className="relative w-screen h-screen bg-[#060908] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
-        {/* Background bersih tanpa karakter cewek */}
         <Image
           src="/assets/level2/screen_padhepokan_polos.jpg"
           alt="Padhepokan Gunung Wilis"
@@ -186,20 +201,20 @@ export default function Level2PadhepokanPage() {
 
         {/* Status Pojok Kanan Atas */}
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 text-amber-300 font-bold text-[10px] sm:text-xs shadow-lg">
-          🚶‍♀️ Maju menyang Undhak-undhakan Padhepokan!
+          🚶‍♀️ Munggah nganti mentok lawang jero Padhepokan!
         </div>
 
-        {/* Indikator Tujuan Tangga Padhepokan */}
-        <div className="absolute left-[44.2%] top-[59%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
-          <div className="px-3 py-0.5 rounded-full bg-amber-950/95 border border-yellow-400 text-yellow-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
+        {/* Indikator Tujuan Lawang Jero Padhepokan */}
+        <div className="absolute left-[44.2%] top-[51%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
+          <div className="px-3 py-0.5 rounded-full bg-amber-950/95 border border-yellow-400 text-yellow-200 text-[9px] sm:text-[10px] font-bold shadow-lg animate-bounce whitespace-nowrap">
             🏯 Mlebu Padhepokan
           </div>
-          <div className="w-20 h-9 rounded-full border-2 border-dashed border-yellow-300/80 bg-amber-400/15 animate-pulse" />
+          <div className="w-16 h-7 rounded-full border-2 border-dashed border-yellow-300/80 bg-amber-400/15 animate-pulse" />
         </div>
 
-        {/* Sprite Pixel Art Rara Runting & Rara Kuning aktif wiwit awal */}
+        {/* Sprite Pixel Art Rara Runting & Rara Kuning */}
         <div
-          className="absolute z-25 pointer-events-none"
+          className="absolute z-[25] pointer-events-none"
           style={{
             left: `${charPos.x}%`,
             top: `${charPos.y}%`,

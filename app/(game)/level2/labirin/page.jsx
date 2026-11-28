@@ -124,8 +124,8 @@ export default function Level2LabirinPage() {
           iy /= mag;
         }
 
-        const MAX_SPEED_X = 24;
-        const MAX_SPEED_Y = 18;
+        const MAX_SPEED_X = 16.5;
+        const MAX_SPEED_Y = 13.0;
         const SMOOTH = 13;
 
         const targetVx = ix * MAX_SPEED_X;
@@ -142,22 +142,24 @@ export default function Level2LabirinPage() {
         }
         setLeanDeg(Math.max(-2.5, Math.min(2.5, vx * 0.09)));
 
-        if (speed > 1.1) {
+        if (speed > 0.8) {
           let nx = Math.max(16, Math.min(86, posRef.current.x + vx * dt));
-          let ny = Math.max(66, Math.min(97, posRef.current.y + vy * dt));
+          let ny = Math.max(56, Math.min(97, posRef.current.y + vy * dt));
 
-          // Rintangan semak tengah labirin (x: 42..68, y < 82)
-          if (nx > 42 && nx < 68 && ny < 82) {
+          // Rintangan semak tengah labirin (x: 42..73, y < 82); mung lorong Gerbang Labirin (74..85) sing bisa mlebu nganti y=56
+          if (nx > 42 && nx < 73.5 && ny < 82) {
             if (posRef.current.y >= 82) ny = 82;
             else if (posRef.current.x <= 42) nx = 42;
-            else nx = 68;
+            else nx = 73.5;
+          } else if (nx <= 42 && ny < 68) {
+            ny = 68;
           }
 
           posRef.current = { x: nx, y: ny };
           setCharPos({ x: nx, y: ny });
           setIsMoving(true);
 
-          walkPhaseRef.current = (walkPhaseRef.current + speed * dt * 0.72) % 10;
+          walkPhaseRef.current = (walkPhaseRef.current + speed * dt * 0.56) % 10;
           const stepIdx = Math.floor(walkPhaseRef.current);
           setWalkFrame(stepIdx);
 
@@ -174,8 +176,8 @@ export default function Level2LabirinPage() {
             });
           }
 
-          // Sampai di Gerbang Labirin (kanan: x 73..86, y 68..90) -> langsung pindah /level2/gladhen!
-          if (nx >= 73 && nx <= 86 && ny >= 68 && ny <= 90 && !doneRef.current) {
+          // Mlebu nganti mentok lorong jero Gerbang Labirin (x: 74..85, y <= 58.5) -> langsung pindah /level2/gladhen!
+          if (nx >= 74 && nx <= 85.5 && ny <= 58.5 && !doneRef.current) {
             doneRef.current = true;
             analogRef.current = { x: 0, y: 0, active: false };
             velRef.current = { vx: 0, vy: 0 };
@@ -232,7 +234,7 @@ export default function Level2LabirinPage() {
     );
   }
 
-  const depthScale = Math.max(0.7, Math.min(1.04, 0.7 + ((charPos.y - 58) / 31) * 0.34));
+  const depthScale = Math.max(0.48, Math.min(1.04, 0.48 + ((charPos.y - 56) / 36) * 0.56));
   const kuningFrame = isMoving ? PING_PONG_FRAMES[walkFrame % 10] : 0;
   const runtingFrame = isMoving ? PING_PONG_FRAMES[(walkFrame + 2) % 10] : 0;
   const kuningFramePct = (kuningFrame / 5) * 100;

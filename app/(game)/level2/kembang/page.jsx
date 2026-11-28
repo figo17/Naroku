@@ -9,13 +9,9 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
-/*
-  STAGE FLOW (/level2/kembang - langsung nyambung saka /level2/pring):
-  'walk'  -> screen_kembang_kabut.jpg (tanpa karakter cewek), sprite 2D pixel maju menyang Kembang Pusaka
-  'clear' -> screen_kembang_terang.jpg (tanpa kabut) -> langsung pindah menyang /level2/labirin tanpa jeda
-*/
-
-const START_POS = { x: 26.5, y: 87.5 };
+const START_POS = { x: 24.5, y: 88.5 };
+const SPEED_X = 16.5;
+const SPEED_Y = 13.0;
 
 export default function Level2KembangPage() {
   const router = useRouter();
@@ -33,6 +29,7 @@ export default function Level2KembangPage() {
   const charPosRef = useRef(START_POS);
   const [facingLeft, setFacingLeft] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const goStage = useCallback((s) => {
     stageRef.current = s;
@@ -48,6 +45,12 @@ export default function Level2KembangPage() {
       })
       .finally(() => setLoading(false));
   }, [router, supabase]);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const playChime = useCallback(() => {
     if (typeof window === 'undefined') return;
@@ -83,29 +86,40 @@ export default function Level2KembangPage() {
 
   const moveCharacter = useCallback(
     (dx, dy) => {
-      if (stageRef.current !== 'walk' || doneRef.current) return;
+      if (doneRef.current) return;
 
-      if (dx < -0.05) setFacingLeft(true);
-      else if (dx > 0.05) setFacingLeft(false);
+      if (dx < -0.02) setFacingLeft(true);
+      else if (dx > 0.02) setFacingLeft(false);
 
       setIsWalking(true);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
-      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 160);
+      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 180);
 
       const prev = charPosRef.current;
-      const nx = Math.max(14, Math.min(72, prev.x + dx));
-      const ny = Math.max(52, Math.min(92, prev.y + dy));
+      const maxX = stageRef.current === 'clear' ? 98 : 74;
+      const minY = stageRef.current === 'clear' ? 40 : 50;
+      const nx = Math.max(14, Math.min(maxX, prev.x + dx));
+      const ny = Math.max(minY, Math.min(93, prev.y + dy));
       const next = { x: nx, y: ny };
       charPosRef.current = next;
       setCharPos(next);
 
-      // Sampai di Kembang Pusaka (x: 52..69, y: 52..69) -> kabut ilang & langsung pindah /level2/labirin!
-      if (nx >= 52 && nx <= 69 && ny >= 52 && ny <= 69 && !doneRef.current) {
+      // Tahap 1: Nyedhaki Kembang Pusaka -> kabut ilang dadi padhang!
+      if (stageRef.current === 'walk' && nx >= 54 && nx <= 69 && ny >= 50 && ny <= 70) {
+        playChime();
+        goStage('clear');
+        setToast({
+          text: '✨ Kabut wis ilang! Mlaku terus nengen nganti mentok layar!',
+        });
+      } else if (
+        stageRef.current === 'clear' &&
+        !doneRef.current &&
+        (nx >= 95.5 || ny <= 42.0)
+      ) {
         doneRef.current = true;
         stopAnalog();
         setIsWalking(false);
         playChime();
-        goStage('clear');
         recordLevel2Mission(supabase, 'kembang');
         router.push('/level2/labirin');
       }
@@ -116,21 +130,34 @@ export default function Level2KembangPage() {
   useEffect(() => {
     const keys = new Set();
     const map = {
-      ArrowUp: [0, -1], KeyW: [0, -1],
-      ArrowDown: [0, 1], KeyS: [0, 1],
-      ArrowLeft: [-1, 0], KeyA: [-1, 0],
-      ArrowRight: [1, 0], KeyD: [1, 0],
+      ArrowUp: [0, -1],
+      KeyW: [0, -1],
+      ArrowDown: [0, 1],
+      KeyS: [0, 1],
+      ArrowLeft: [-1, 0],
+      KeyA: [-1, 0],
+      ArrowRight: [1, 0],
+      KeyD: [1, 0],
     };
     let raf;
-    const loop = () => {
-      if (stageRef.current === 'walk' && !doneRef.current) {
-        let dx = analogRef.current.active ? analogRef.current.x * 0.65 : 0;
-        let dy = analogRef.current.active ? analogRef.current.y * 0.65 : 0;
+    let lastTime = performance.now();
+
+    const loop = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      if (!doneRef.current) {
+        let ix = analogRef.current.active ? analogRef.current.x : 0;
+        let iy = analogRef.current.active ? analogRef.current.y : 0;
         keys.forEach((k) => {
-          dx += map[k][0] * 0.6;
-          dy += map[k][1] * 0.6;
+          ix += map[k][0];
+          iy += map[k][1];
         });
-        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+        const mag = Math.hypot(ix, iy);
+        if (mag > 0.06) {
+          const norm = mag > 1 ? 1 / mag : 1;
+          moveCharacter(ix * norm * SPEED_X * dt, iy * norm * SPEED_Y * dt);
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -161,12 +188,11 @@ export default function Level2KembangPage() {
     );
   }
 
-  const depthScale = Math.max(0.72, Math.min(1.04, 0.72 + ((charPos.y - 52) / 40) * 0.32));
+  const depthScale = Math.max(0.5, Math.min(1.04, 0.5 + ((charPos.y - 40) / 50) * 0.54));
 
   return (
     <div className="relative w-screen h-screen bg-[#070d0a] text-stone-100 flex items-center justify-center overflow-hidden select-none font-sans">
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl">
-        {/* Background bersih tanpa karakter cewek */}
         <Image
           src="/assets/level2/screen_kembang_kabut.jpg"
           alt="Alas Kabut - Maju Menyang Kembang Pusaka"
@@ -206,21 +232,29 @@ export default function Level2KembangPage() {
 
         {/* Status Pojok Kanan Atas */}
         <div className="absolute top-3 right-4 z-40 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-amber-400/80 text-amber-300 font-bold text-[10px] sm:text-xs">
-          {stage === 'walk' ? '🌸 Maju nyedhaki Kembang Pusaka!' : '✨ Kabut Wis Ilang!'}
+          {stage === 'walk'
+            ? '🌸 Maju nyedhaki Kembang Pusaka!'
+            : '✨ Kabut Padhang! Mlaku nengen nganti mentok layar!'}
         </div>
 
-        {/* Walk: Penanda Tujuan Kembang Pusaka */}
-        {stage === 'walk' && (
+        {stage === 'walk' ? (
           <div className="absolute left-[61.8%] top-[33%] -translate-x-1/2 z-20 pointer-events-none flex flex-col items-center">
             <div className="px-3 py-0.5 rounded-full bg-amber-950/95 border border-yellow-400 text-yellow-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
               ⬇ Maju Mréné!
             </div>
           </div>
+        ) : (
+          <div className="absolute left-[93%] top-[64%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
+            <div className="px-2.5 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-300 text-emerald-200 text-[9px] sm:text-[10px] font-bold shadow-lg animate-bounce whitespace-nowrap">
+              🎯 Lanjut ➡
+            </div>
+            <div className="w-12 h-8 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
+          </div>
         )}
 
-        {/* Sprite 2D Pixel Art Putri Rara Runting & Rara Kuning aktif wiwit awal */}
+        {/* Sprite 2D Pixel Art Putri Rara Runting & Rara Kuning */}
         <div
-          className="absolute z-25 pointer-events-none"
+          className="absolute z-[25] pointer-events-none"
           style={{
             left: `${charPos.x}%`,
             top: `${charPos.y}%`,
@@ -233,12 +267,17 @@ export default function Level2KembangPage() {
 
         {/* Analog Kontroler */}
         <AnalogJoystick
-          disabled={stage === 'clear'}
           onChange={(v) => {
             analogRef.current = v;
           }}
         />
       </div>
+
+      {toast && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 max-w-md w-[90%] px-4 py-2 rounded-2xl border bg-emerald-950/95 border-emerald-400 text-emerald-200 text-xs sm:text-sm font-bold shadow-2xl">
+          {toast.text}
+        </div>
+      )}
     </div>
   );
 }

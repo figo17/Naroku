@@ -9,6 +9,9 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
+const SPEED_X = 16.5;
+const SPEED_Y = 13.0;
+
 export default function Level2AlasKapakPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -18,8 +21,8 @@ export default function Level2AlasKapakPage() {
   const doneRef = useRef(false);
 
   const [loading, setLoading] = useState(true);
-  const [charPos, setCharPos] = useState({ x: 22, y: 78 });
-  const charPosRef = useRef({ x: 22, y: 78 });
+  const [charPos, setCharPos] = useState({ x: 22, y: 84 });
+  const charPosRef = useRef({ x: 22, y: 84 });
   const [facingLeft, setFacingLeft] = useState(false);
   const [isWalking, setIsWalking] = useState(false);
 
@@ -27,12 +30,21 @@ export default function Level2AlasKapakPage() {
   const hasAxeRef = useRef(false);
   const [chopProgress, setChopProgress] = useState(0);
   const chopProgressRef = useRef(0);
+  const [treeCleared, setTreeCleared] = useState(false);
+  const treeClearedRef = useRef(false);
   const [isChopping, setIsChopping] = useState(false);
   const [woodChips, setWoodChips] = useState([]);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => { hasAxeRef.current = hasAxe; }, [hasAxe]);
-  useEffect(() => { chopProgressRef.current = chopProgress; }, [chopProgress]);
+  useEffect(() => {
+    hasAxeRef.current = hasAxe;
+  }, [hasAxe]);
+  useEffect(() => {
+    chopProgressRef.current = chopProgress;
+  }, [chopProgress]);
+  useEffect(() => {
+    treeClearedRef.current = treeCleared;
+  }, [treeCleared]);
 
   useEffect(() => {
     router.prefetch('/level2/kali');
@@ -62,16 +74,20 @@ export default function Level2AlasKapakPage() {
         osc.frequency.exponentialRampToValueAtTime(1440, now + 0.14);
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.16);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.17);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.17);
       } else if (type === 'chop') {
         osc.type = 'sawtooth';
         osc.frequency.setValueAtTime(180, now);
         osc.frequency.exponentialRampToValueAtTime(65, now + 0.18);
         gain.gain.setValueAtTime(0.32, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.2);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.21);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.21);
       } else if (type === 'success') {
         osc.type = 'sine';
         osc.frequency.setValueAtTime(523.25, now);
@@ -79,8 +95,10 @@ export default function Level2AlasKapakPage() {
         osc.frequency.setValueAtTime(783.99, now + 0.2);
         gain.gain.setValueAtTime(0.25, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.4);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.42);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.42);
       }
     } catch {
       // Ignore audio restriction
@@ -89,39 +107,54 @@ export default function Level2AlasKapakPage() {
 
   useEffect(() => {
     if (!toast) return;
-    const t = setTimeout(() => setToast(null), 2600);
+    const t = setTimeout(() => setToast(null), 2800);
     return () => clearTimeout(t);
   }, [toast]);
 
-  const isNearTree = (pos) => pos.x >= 40 && pos.x <= 78 && pos.y >= 46 && pos.y <= 78;
+  const isNearTree = (pos) => pos.x >= 40 && pos.x <= 78 && pos.y >= 48 && pos.y <= 80;
 
-  const moveCharacter = useCallback((dx, dy) => {
-    if (doneRef.current) return;
+  const moveCharacter = useCallback(
+    (dx, dy) => {
+      if (doneRef.current) return;
 
-    if (dx < -0.05) setFacingLeft(true);
-    else if (dx > 0.05) setFacingLeft(false);
+      if (dx < -0.02) setFacingLeft(true);
+      else if (dx > 0.02) setFacingLeft(false);
 
-    setIsWalking(true);
-    if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
-    walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 160);
+      setIsWalking(true);
+      if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
+      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 180);
 
-    const prev = charPosRef.current;
-    const nx = Math.max(10, Math.min(86, prev.x + dx));
-    const ny = Math.max(48, Math.min(92, prev.y + dy));
-    const nextPos = { x: nx, y: ny };
-    charPosRef.current = nextPos;
-    setCharPos(nextPos);
+      const prev = charPosRef.current;
+      const minY = treeClearedRef.current ? 36.5 : 54;
+      const maxX = treeClearedRef.current ? 97 : 86;
+      const nx = Math.max(10, Math.min(maxX, prev.x + dx));
+      const ny = Math.max(minY, Math.min(93, prev.y + dy));
+      const nextPos = { x: nx, y: ny };
+      charPosRef.current = nextPos;
+      setCharPos(nextPos);
 
-    if (!hasAxeRef.current && nx >= 37 && nx <= 52 && ny >= 66 && ny <= 88) {
-      hasAxeRef.current = true;
-      setHasAxe(true);
-      playSound('pickup');
-      setToast({ text: '🪓 Kapak dijupuk! Maju menyang ngarep wit gedhe!', type: 'success' });
-    }
-  }, [playSound]);
+      if (!hasAxeRef.current && nx >= 37 && nx <= 52 && ny >= 66 && ny <= 88) {
+        hasAxeRef.current = true;
+        setHasAxe(true);
+        playSound('pickup');
+        setToast({ text: '🪓 Kapak dijupuk! Maju menyang ngarep wit gedhe!', type: 'success' });
+      }
+
+      // Sawise wit ditebang, mlaku nganti mentok pucuk dalan alas / pinggir layar sadurunge pindah!
+      if (treeClearedRef.current && !doneRef.current && (ny <= 38.5 || nx >= 95.5)) {
+        doneRef.current = true;
+        analogRef.current = { x: 0, y: 0, active: false };
+        setIsWalking(false);
+        playSound('success');
+        recordLevel2Mission(supabase, 'alas');
+        router.push('/level2/kali');
+      }
+    },
+    [playSound, router, supabase]
+  );
 
   const swingAxe = useCallback(() => {
-    if (doneRef.current) return;
+    if (doneRef.current || treeClearedRef.current) return;
     if (!hasAxeRef.current) {
       setToast({ text: '⚠️ Jupuk kapak ing lemah dhisik!', type: 'info' });
       return;
@@ -148,29 +181,39 @@ export default function Level2AlasKapakPage() {
     chopProgressRef.current = nextProgress;
     setChopProgress(nextProgress);
 
-    if (nextProgress >= 100 && !doneRef.current) {
-      doneRef.current = true;
-      analogRef.current = { x: 0, y: 0, active: false };
+    if (nextProgress >= 100 && !treeClearedRef.current) {
+      treeClearedRef.current = true;
+      setTreeCleared(true);
       playSound('success');
-      recordLevel2Mission(supabase, 'alas');
-      router.push('/level2/kali');
+      setToast({
+        text: '✨ Dalan wis kabukak! Mlaku terus nganti mentok pucuk dalan alas!',
+        type: 'success',
+      });
     }
-  }, [playSound, router, supabase]);
+  }, [playSound]);
 
   useEffect(() => {
     const activeKeys = new Set();
     let animFrameId = null;
+    let lastTime = performance.now();
 
-    const loop = () => {
+    const loop = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
       if (!doneRef.current) {
-        const step = 0.65;
-        let dx = analogRef.current.active ? analogRef.current.x * 0.7 : 0;
-        let dy = analogRef.current.active ? analogRef.current.y * 0.7 : 0;
-        if (activeKeys.has('ArrowUp') || activeKeys.has('KeyW')) dy -= step;
-        if (activeKeys.has('ArrowDown') || activeKeys.has('KeyS')) dy += step;
-        if (activeKeys.has('ArrowLeft') || activeKeys.has('KeyA')) dx -= step;
-        if (activeKeys.has('ArrowRight') || activeKeys.has('KeyD')) dx += step;
-        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+        let ix = analogRef.current.active ? analogRef.current.x : 0;
+        let iy = analogRef.current.active ? analogRef.current.y : 0;
+        if (activeKeys.has('ArrowUp') || activeKeys.has('KeyW')) iy -= 1;
+        if (activeKeys.has('ArrowDown') || activeKeys.has('KeyS')) iy += 1;
+        if (activeKeys.has('ArrowLeft') || activeKeys.has('KeyA')) ix -= 1;
+        if (activeKeys.has('ArrowRight') || activeKeys.has('KeyD')) ix += 1;
+
+        const mag = Math.hypot(ix, iy);
+        if (mag > 0.06) {
+          const norm = mag > 1 ? 1 / mag : 1;
+          moveCharacter(ix * norm * SPEED_X * dt, iy * norm * SPEED_Y * dt);
+        }
       }
       animFrameId = requestAnimationFrame(loop);
     };
@@ -211,6 +254,7 @@ export default function Level2AlasKapakPage() {
     ? '/assets/level2/screen_alas_tanpa_cewe_kosong.jpg'
     : '/assets/level2/screen_alas_tanpa_cewe_kapak.jpg';
   const nearTree = isNearTree(charPos);
+  const depthScale = Math.max(0.46, Math.min(1.03, 0.46 + ((charPos.y - 36.5) / 52) * 0.57));
 
   return (
     <div className="relative w-screen h-screen bg-[#020705] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
@@ -239,7 +283,7 @@ export default function Level2AlasKapakPage() {
         />
 
         {/* Navigasi Pojok Kiri Atas */}
-        <div className="absolute top-3 left-4 z-35 flex items-center gap-2">
+        <div className="absolute top-3 left-4 z-[35] flex items-center gap-2">
           <Link
             href="/level2/mucuk"
             className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold"
@@ -255,10 +299,12 @@ export default function Level2AlasKapakPage() {
         </div>
 
         {/* Badge Petunjuk Kontrol */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-35 px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/75 shadow-xl">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[35] px-3.5 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/75 shadow-xl">
           <span className="text-yellow-300 font-bold text-[10px] sm:text-xs whitespace-nowrap">
             {!hasAxe
               ? '🕹️ Analog / Panah — Mlaku jupuk kapak ing lemah!'
+              : treeCleared
+              ? '🚶‍♀️ Mlaku terus nganti mentok pucuk dalan alas!'
               : !nearTree
               ? '🚶 Mlaku menyang ngarep wit gedhe!'
               : '🪓 Pencet "Ayunkan Kapak!" utawa Spasi!'}
@@ -273,25 +319,36 @@ export default function Level2AlasKapakPage() {
           </div>
         )}
 
-        {/* Bar Tebang Pohon */}
-        <div className="absolute left-[58%] top-[34%] -translate-x-1/2 z-25 flex flex-col items-center gap-1 pointer-events-none">
-          <div className="bg-stone-950/90 border border-yellow-500/80 rounded-xl px-3 py-1.5 shadow-2xl min-w-[150px] sm:min-w-[190px]">
-            <div className="flex items-center justify-between text-[9px] sm:text-[11px] font-bold text-yellow-300 mb-1">
-              <span>🪵 Tebang Wit</span>
-              <span>{chopProgress}%</span>
+        {treeCleared && (
+          <div className="absolute left-[66%] top-[34%] -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center gap-1">
+            <div className="px-3 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-300 text-emerald-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
+              🎯 Pucuk Dalan Alas
             </div>
-            <div className="w-full h-2.5 bg-stone-800 rounded-full overflow-hidden border border-stone-700">
-              <div
-                className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-200"
-                style={{ width: `${chopProgress}%` }}
-              />
+            <div className="w-16 h-7 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
+          </div>
+        )}
+
+        {/* Bar Tebang Pohon */}
+        {!treeCleared && (
+          <div className="absolute left-[58%] top-[34%] -translate-x-1/2 z-[25] flex flex-col items-center gap-1 pointer-events-none">
+            <div className="bg-stone-950/90 border border-yellow-500/80 rounded-xl px-3 py-1.5 shadow-2xl min-w-[150px] sm:min-w-[190px]">
+              <div className="flex items-center justify-between text-[9px] sm:text-[11px] font-bold text-yellow-300 mb-1">
+                <span>🪵 Tebang Wit</span>
+                <span>{chopProgress}%</span>
+              </div>
+              <div className="w-full h-2.5 bg-stone-800 rounded-full overflow-hidden border border-stone-700">
+                <div
+                  className="h-full bg-gradient-to-r from-amber-500 via-yellow-400 to-emerald-400 transition-all duration-200"
+                  style={{ width: `${chopProgress}%` }}
+                />
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
-        {hasAxe && (
+        {hasAxe && !treeCleared && (
           <div
-            className={`absolute left-[42%] top-[48%] w-[32%] h-[24%] rounded-3xl z-15 pointer-events-none transition-all ${
+            className={`absolute left-[42%] top-[48%] w-[32%] h-[24%] rounded-3xl z-[15] pointer-events-none transition-all ${
               nearTree
                 ? 'border-2 border-emerald-400/80 bg-emerald-400/10'
                 : 'border border-dashed border-yellow-400/40 bg-yellow-400/5'
@@ -314,13 +371,14 @@ export default function Level2AlasKapakPage() {
           />
         ))}
 
-        {/* SPRITE 2D PIXEL ART LANGSUNG NYAMBUNG (KAPAK DICEKEL ING TANGAN RARA KUNING) */}
+        {/* SPRITE 2D PIXEL ART LANGSUNG NYAMBUNG */}
         <div
           className="absolute z-20 pointer-events-none"
           style={{
             left: `${charPos.x}%`,
             top: `${charPos.y}%`,
-            transform: 'translate(-50%, -100%)',
+            transform: `translate(-50%, -100%) scale(${depthScale})`,
+            transformOrigin: 'bottom center',
           }}
         >
           <PixelRoroPair
@@ -349,11 +407,11 @@ export default function Level2AlasKapakPage() {
           />
         </div>
 
-        {hasAxe && (
+        {hasAxe && !treeCleared && (
           <button
             type="button"
             onClick={swingAxe}
-            className={`absolute right-[4%] bottom-[8%] z-35 flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 font-black text-xs sm:text-sm shadow-2xl transition-all active:scale-90 cursor-pointer ${
+            className={`absolute right-[4%] bottom-[8%] z-[35] flex items-center gap-2 px-4 py-2.5 rounded-2xl border-2 font-black text-xs sm:text-sm shadow-2xl transition-all active:scale-90 cursor-pointer ${
               nearTree
                 ? 'bg-gradient-to-r from-amber-500 to-yellow-400 border-yellow-200 text-stone-950 animate-pulse'
                 : 'bg-stone-900/85 border-stone-600 text-stone-400'

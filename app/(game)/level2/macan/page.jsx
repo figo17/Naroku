@@ -9,12 +9,14 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
-const START_POS = { x: 24, y: 88 };
+const START_POS = { x: 24, y: 89 };
 // Diperlambat supaya macan mlaku alon-alon nyebrang dalan alas (6.2 detik)
 const WALK_MS = 6200;
-const HIDE_MS = 4000;
+const HIDE_MS = 4800;
 const CYCLE_MS = (WALK_MS + HIDE_MS) * 2;
 const FRAME_MS = 140; // 8-frame walk cycle alus
+const SPEED_X = 16.5;
+const SPEED_Y = 13.0;
 
 function getTigerState(elapsedMs) {
   const t = elapsedMs % CYCLE_MS;
@@ -124,21 +126,21 @@ export default function Level2MacanPage() {
     (dx, dy) => {
       if (doneRef.current) return;
 
-      if (dx < -0.05) setFacingLeft(true);
-      else if (dx > 0.05) setFacingLeft(false);
+      if (dx < -0.02) setFacingLeft(true);
+      else if (dx > 0.02) setFacingLeft(false);
 
       setIsWalking(true);
       if (walkStopTimerRef.current) clearTimeout(walkStopTimerRef.current);
-      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 160);
+      walkStopTimerRef.current = setTimeout(() => setIsWalking(false), 180);
 
       const prev = charPosRef.current;
-      const nx = Math.max(20, Math.min(72, prev.x + dx));
-      const ny = Math.max(36, Math.min(92, prev.y + dy));
+      const nx = Math.max(20, Math.min(74, prev.x + dx));
+      const ny = Math.max(25, Math.min(93, prev.y + dy));
       const next = { x: nx, y: ny };
       charPosRef.current = next;
       setCharPos(next);
 
-      if (ny <= 42 && !doneRef.current) {
+      if (ny <= 27.5 && !doneRef.current) {
         doneRef.current = true;
         analogRef.current = { x: 0, y: 0, active: false };
         setIsWalking(false);
@@ -187,15 +189,22 @@ export default function Level2MacanPage() {
       ArrowRight: [1, 0], KeyD: [1, 0],
     };
     let raf;
-    const loop = () => {
+    let lastTime = performance.now();
+    const loop = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
       if (!doneRef.current) {
-        let dx = analogRef.current.active ? analogRef.current.x * 0.68 : 0;
-        let dy = analogRef.current.active ? analogRef.current.y * 0.68 : 0;
+        let ix = analogRef.current.active ? analogRef.current.x : 0;
+        let iy = analogRef.current.active ? analogRef.current.y : 0;
         keys.forEach((k) => {
-          dx += map[k][0] * 0.62;
-          dy += map[k][1] * 0.62;
+          ix += map[k][0];
+          iy += map[k][1];
         });
-        if (Math.hypot(dx, dy) > 0.04) moveCharacter(dx, dy);
+        const mag = Math.hypot(ix, iy);
+        if (mag > 0.06) {
+          const norm = mag > 1 ? 1 / mag : 1;
+          moveCharacter(ix * norm * SPEED_X * dt, iy * norm * SPEED_Y * dt);
+        }
       }
       raf = requestAnimationFrame(loop);
     };
@@ -226,7 +235,7 @@ export default function Level2MacanPage() {
     );
   }
 
-  const depthScale = Math.max(0.62, Math.min(1.05, 0.62 + ((charPos.y - 36) / 56) * 0.43));
+  const depthScale = Math.max(0.4, Math.min(1.05, 0.4 + ((charPos.y - 25) / 64) * 0.65));
   const tigerFramePct = (tiger.frame / 7) * 100;
 
   return (
@@ -275,11 +284,11 @@ export default function Level2MacanPage() {
           )}
         </div>
 
-        <div className="absolute left-[46%] top-[32%] -translate-x-1/2 -translate-y-1/2 z-15 pointer-events-none flex flex-col items-center gap-1">
+        <div className="absolute left-[48%] top-[24%] -translate-x-1/2 -translate-y-1/2 z-[15] pointer-events-none flex flex-col items-center gap-1">
           <div className="px-3 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-300 text-emerald-200 text-[9px] sm:text-[11px] font-bold shadow-lg animate-bounce whitespace-nowrap">
-            🎯 Liwat Mréné!
+            🎯 Pucuk Dalan Alas
           </div>
-          <div className="w-20 h-8 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
+          <div className="w-16 h-6 rounded-full border-2 border-dashed border-emerald-300/80 bg-emerald-400/15 animate-pulse" />
         </div>
 
         <div

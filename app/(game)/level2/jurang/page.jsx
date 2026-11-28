@@ -9,18 +9,27 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
+const CROSS_SPEED = 15.5; // % per detik (alon lan alus nganti mentok tepi tengen layar)
+
+function ropePathY(x) {
+  if (x <= 32) return 76 - ((x - 20) / 12) * 6;
+  if (x <= 88) return 70 + Math.sin(((x - 32) / 56) * Math.PI) * 4.2 - ((x - 32) / 56) * 5;
+  return 65 - ((x - 88) / 10) * 7.5;
+}
+
 export default function Level2JurangTaliPage() {
   const router = useRouter();
   const supabase = createClient();
   const audioCtxRef = useRef(null);
   const doneRef = useRef(false);
+  const posXRef = useRef(20);
 
   const [loading, setLoading] = useState(true);
   const [isRopeConnected, setIsRopeConnected] = useState(false);
   const [isConnecting, setIsConnecting] = useState(false);
   const [sparkleActive, setSparkleActive] = useState(false);
 
-  const [crossStep, setCrossStep] = useState(0); // 0..4
+  const [charPos, setCharPos] = useState({ x: 20, y: 76 });
   const [isCrossing, setIsCrossing] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -58,8 +67,10 @@ export default function Level2JurangTaliPage() {
         osc.frequency.exponentialRampToValueAtTime(140, now + 0.22);
         gain.gain.setValueAtTime(0.35, now);
         gain.gain.exponentialRampToValueAtTime(0.01, now + 0.24);
-        osc.connect(gain); gain.connect(ctx.destination);
-        osc.start(now); osc.stop(now + 0.25);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start(now);
+        osc.stop(now + 0.25);
       } else if (type === 'victory') {
         [523.25, 587.33, 659.25, 783.99].forEach((freq, idx) => {
           const osc = ctx.createOscillator();
@@ -69,14 +80,44 @@ export default function Level2JurangTaliPage() {
           osc.frequency.setValueAtTime(freq, s);
           gain.gain.setValueAtTime(0.24, s);
           gain.gain.exponentialRampToValueAtTime(0.001, s + 0.4);
-          osc.connect(gain); gain.connect(ctx.destination);
-          osc.start(s); osc.stop(s + 0.45);
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+          osc.start(s);
+          osc.stop(s + 0.45);
         });
       }
     } catch {
       // Ignore audio restriction
     }
   }, []);
+
+  useEffect(() => {
+    if (!isCrossing) return;
+    let rafId = null;
+    let lastTime = performance.now();
+
+    const tick = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      const nx = Math.min(98, posXRef.current + CROSS_SPEED * dt);
+      posXRef.current = nx;
+      setCharPos({ x: nx, y: ropePathY(nx) });
+
+      if (nx >= 97.5) {
+        setIsCrossing(false);
+        playSound('victory');
+        router.push('/level2/gua');
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isCrossing, playSound, router]);
 
   const handleConnectAndCross = useCallback(() => {
     if (isRopeConnected || isConnecting || doneRef.current) return;
@@ -89,23 +130,7 @@ export default function Level2JurangTaliPage() {
     recordLevel2Mission(supabase, 'jurang');
 
     setTimeout(() => setSparkleActive(false), 900);
-
-    // Langsung mlaku nyebrang jembatan tali rotan -> langsung pindah ke /level2/gua!
-    setCrossStep(1);
-    setTimeout(() => {
-      setCrossStep(2);
-      setTimeout(() => {
-        setCrossStep(3);
-        setTimeout(() => {
-          setCrossStep(4);
-          playSound('victory');
-          setTimeout(() => {
-            router.push('/level2/gua');
-          }, 550);
-        }, 650);
-      }, 700);
-    }, 650);
-  }, [isConnecting, isRopeConnected, playSound, router, supabase]);
+  }, [isConnecting, isRopeConnected, playSound, supabase]);
 
   useEffect(() => {
     const onKeyDown = (e) => {
@@ -127,21 +152,9 @@ export default function Level2JurangTaliPage() {
     );
   }
 
-  const charCoords =
-    crossStep === 4
-      ? { left: '87%', top: '66%' }
-      : crossStep === 3
-      ? { left: '72%', top: '69%' }
-      : crossStep === 2
-      ? { left: '53%', top: '74%' }
-      : crossStep === 1
-      ? { left: '34%', top: '70%' }
-      : { left: '20%', top: '76%' };
-
   return (
     <div className="relative w-screen h-screen bg-[#030c07] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans">
       <div className="relative w-full h-full max-w-[calc(100vh*16/9)] max-h-[calc(100vw*9/16)] aspect-[16/9] overflow-hidden shadow-2xl select-none">
-        {/* Kedua background bersih tanpa karakter cewek bawaan */}
         <Image
           src="/assets/level2/screen_jurang_tali_putus_clean.jpg"
           alt="Jurang Tali Putus"
@@ -164,8 +177,10 @@ export default function Level2JurangTaliPage() {
         />
 
         {/* Status Badge */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-35 px-4 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/80 shadow-xl text-xs font-bold text-yellow-300 whitespace-nowrap">
-          {isRopeConnected ? '🪢 Nyebrang Jembatan Tali Rotan...' : '🪢 Pencet "Gunakake tali rotan" utawa geser Analog nengen!'}
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[35] px-4 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/80 shadow-xl text-xs font-bold text-yellow-300 whitespace-nowrap">
+          {isRopeConnected
+            ? '🪢 Nyebrang Jembatan Tali Rotan nganti seberang...'
+            : '🪢 Pencet "Gunakake tali rotan" utawa geser Analog nengen!'}
         </div>
 
         {/* Hitbox Cagak, Tali Pedhot & Tombol Gunakake Tali Rotan */}
@@ -173,7 +188,7 @@ export default function Level2JurangTaliPage() {
           <>
             <div
               onClick={handleConnectAndCross}
-              className="absolute left-[29.5%] top-[36.0%] w-[38.5%] h-[27.0%] rounded-2xl z-25 cursor-pointer hover:bg-yellow-400/10"
+              className="absolute left-[29.5%] top-[36.0%] w-[38.5%] h-[27.0%] rounded-2xl z-[25] cursor-pointer hover:bg-yellow-400/10"
             />
             <button
               type="button"
@@ -194,14 +209,13 @@ export default function Level2JurangTaliPage() {
           </div>
         )}
 
-        {/* SPRITE 2D PIXEL ART LANGSUNG NYAMBUNG DARI AWAL */}
+        {/* SPRITE 2D PIXEL ART MLAKU ALON NGANTI MENTOK TEPI TENGEN */}
         <div
-          className="absolute z-30 pointer-events-none transition-all ease-linear"
+          className="absolute z-30 pointer-events-none"
           style={{
-            left: charCoords.left,
-            top: charCoords.top,
+            left: `${charPos.x}%`,
+            top: `${charPos.y}%`,
             transform: 'translate(-50%, -100%)',
-            transitionDuration: isCrossing ? '0.62s' : '0.2s',
           }}
         >
           <PixelRoroPair
@@ -219,7 +233,7 @@ export default function Level2JurangTaliPage() {
           }}
         />
 
-        <div className="absolute top-3 left-3 z-35 flex gap-2">
+        <div className="absolute top-3 left-3 z-[35] flex gap-2">
           <Link
             href="/level2/kali"
             className="px-3 py-1 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold"

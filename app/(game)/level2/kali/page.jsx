@@ -9,11 +9,20 @@ import AnalogJoystick from '@/components/game/AnalogJoystick';
 import PixelRoroPair from '@/components/game/PixelRoroPair';
 import { recordLevel2Mission } from '@/lib/level2Progress';
 
+const CROSS_SPEED = 16.0; // % per detik (alon lan alus nganti mentok tengen layar)
+
+function bridgePathY(x) {
+  if (x <= 40) return 63 - ((x - 22) / 18) * 5;
+  if (x <= 72) return 58 - Math.sin(((x - 40) / 32) * Math.PI) * 3.5;
+  return 58 + ((x - 72) / 26) * 4;
+}
+
 export default function Level2KaliJembatanPage() {
   const router = useRouter();
   const supabase = createClient();
   const containerRef = useRef(null);
   const doneRef = useRef(false);
+  const posXRef = useRef(22);
 
   const [loading, setLoading] = useState(true);
   const [isHoldingLog, setIsHoldingLog] = useState(false);
@@ -23,7 +32,7 @@ export default function Level2KaliJembatanPage() {
 
   const [placedLogs, setPlacedLogs] = useState([]);
   const [bridgeBuilt, setBridgeBuilt] = useState(false);
-  const [crossStep, setCrossStep] = useState(0); // 0: bank kiri (21%), 1: tengah jembatan (50%), 2: seberang (74%)
+  const [charPos, setCharPos] = useState({ x: 22, y: 63 });
   const [isCrossing, setIsCrossing] = useState(false);
   const [toast, setToast] = useState(null);
 
@@ -42,6 +51,34 @@ export default function Level2KaliJembatanPage() {
     const t = setTimeout(() => setToast(null), 2600);
     return () => clearTimeout(t);
   }, [toast]);
+
+  // Mlaku alon nyebrang jembatan kayu nganti mentok tepi tengen layar (x >= 97.5%)
+  useEffect(() => {
+    if (!isCrossing) return;
+    let rafId = null;
+    let lastTime = performance.now();
+
+    const tick = (now) => {
+      const dt = Math.min(0.05, Math.max(0.001, (now - lastTime) / 1000));
+      lastTime = now;
+
+      const nx = Math.min(98, posXRef.current + CROSS_SPEED * dt);
+      posXRef.current = nx;
+      setCharPos({ x: nx, y: bridgePathY(nx) });
+
+      if (nx >= 97.5) {
+        setIsCrossing(false);
+        router.push('/level2/jurang');
+        return;
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [isCrossing, router]);
 
   const updatePointer = (clientX, clientY) => {
     if (!containerRef.current) return false;
@@ -87,16 +124,12 @@ export default function Level2KaliJembatanPage() {
     } else {
       doneRef.current = true;
       setBridgeBuilt(true);
-      setIsCrossing(true);
-      setCrossStep(1);
       recordLevel2Mission(supabase, 'kali');
-
-      setTimeout(() => {
-        setCrossStep(2);
-        setTimeout(() => {
-          router.push('/level2/jurang');
-        }, 900);
-      }, 950);
+      setToast({
+        type: 'success',
+        text: '🌉 Jembatan dadi! Nyebrang nganti mentok seberang kali...',
+      });
+      setIsCrossing(true);
     }
   };
 
@@ -121,13 +154,6 @@ export default function Level2KaliJembatanPage() {
     );
   }
 
-  const charCoords =
-    crossStep === 2
-      ? { left: '74%', top: '62%' }
-      : crossStep === 1
-      ? { left: '53%', top: '57%' }
-      : { left: '22%', top: '63%' };
-
   return (
     <div
       className="relative w-screen h-screen bg-[#020705] text-stone-100 flex flex-col items-center justify-center overflow-hidden select-none font-sans"
@@ -140,7 +166,6 @@ export default function Level2KaliJembatanPage() {
         ref={containerRef}
         className="relative w-full h-full max-w-[calc(100vh*1024/512)] max-h-[calc(100vw*512/1024)] aspect-[1024/512] overflow-hidden shadow-2xl select-none"
       >
-        {/* Latar Bersih Tanpa Karakter Cewek Bawaan (Sprite 2D Pixel Art Langsung Nyambung) */}
         <Image
           src="/assets/level2/screen_kali_jembatan_clean.jpg"
           alt="Alas Gunung Wilis - Kali Banter"
@@ -151,7 +176,7 @@ export default function Level2KaliJembatanPage() {
         />
 
         {/* Status Badge Susunan Kayu */}
-        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-35 flex items-center gap-2 px-4 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/80 shadow-2xl">
+        <div className="absolute top-3 left-1/2 -translate-x-1/2 z-[35] flex items-center gap-2 px-4 py-1.5 rounded-full bg-stone-950/90 border border-yellow-400/80 shadow-2xl">
           <span className="text-yellow-400 font-bold text-xs sm:text-sm">🪵 Jembatan Kayu:</span>
           <div className="flex items-center gap-1.5">
             {[1, 2, 3].map((step) => (
@@ -191,7 +216,7 @@ export default function Level2KaliJembatanPage() {
 
         {/* Jembatan 3 Kayu */}
         {placedLogs.length > 0 && (
-          <div className="absolute left-[42.5%] top-[39.0%] w-[31.0%] h-[26.0%] z-25 pointer-events-none">
+          <div className="absolute left-[42.5%] top-[39.0%] w-[31.0%] h-[26.0%] z-[25] pointer-events-none">
             {placedLogs.length >= 1 && (
               <div
                 className="absolute left-[0%] top-[0%] w-[94%] h-[60%]"
@@ -219,14 +244,13 @@ export default function Level2KaliJembatanPage() {
           </div>
         )}
 
-        {/* SPRITE 2D PIXEL ART AKTIF SEJAK AWAL SCENE */}
+        {/* SPRITE 2D PIXEL ART MLAKU ALON NGANTI MENTOK TEPI TENGEN */}
         <div
-          className="absolute z-30 pointer-events-none transition-all ease-linear"
+          className="absolute z-30 pointer-events-none"
           style={{
-            left: charCoords.left,
-            top: charCoords.top,
+            left: `${charPos.x}%`,
+            top: `${charPos.y}%`,
             transform: 'translate(-50%, -100%)',
-            transitionDuration: isCrossing ? '0.9s' : '0.2s',
           }}
         >
           <PixelRoroPair isWalking={isCrossing} heightCss="clamp(68px, 19vh, 134px)" />
@@ -303,7 +327,7 @@ export default function Level2KaliJembatanPage() {
           }}
         />
 
-        <div className="absolute top-3 left-4 z-35">
+        <div className="absolute top-3 left-4 z-[35]">
           <Link
             href="/level2/alas"
             className="px-3 py-1.5 rounded-full bg-stone-950/85 border border-yellow-500/50 text-yellow-300 text-[10px] sm:text-xs font-bold"
