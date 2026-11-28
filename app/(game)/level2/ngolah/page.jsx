@@ -43,25 +43,29 @@ const BASKET_ITEMS = [
   {
     id: 'andong',
     name: 'Godhong Andong',
-    left: '5.5%',
+    left: '6.2%',
+    width: '12.4%',
     info: '🍃 Godhong Andong: Ngudhunake benter lan mbiyantu ngempiske abuh gondhok.',
   },
   {
     id: 'sirih',
     name: 'Godhong Sirih',
-    left: '20.0%',
+    left: '20.2%',
+    width: '12.4%',
     info: '🍃 Godhong Sirih: Ngresiki kuman kulit lan ngurangi gatel-gatel.',
   },
   {
     id: 'sambiloto',
     name: 'Godhong Sambiloto',
-    left: '33.2%',
+    left: '33.6%',
+    width: '12.4%',
     info: '🍃 Godhong Sambiloto: Jamu pait kang mandi kanggo marasake lelara kuning.',
   },
   {
     id: 'meniran',
     name: 'Godhong Meniran',
-    left: '46.5%',
+    left: '46.8%',
+    width: '11.8%',
     info: '🍃 Godhong Meniran: Nguwatake daya tahan awak lan marasake lelara kulit.',
   },
 ];
@@ -590,7 +594,7 @@ export default function Level2NgolahJamuPage() {
           type="button"
           onClick={() => handleTriggerStep(NGOLAH_STEPS[3])}
           title="Kendhil Geni: Rebus karo banyu nganti mateng (Tahap 4)"
-          className="absolute left-[57.0%] top-[55.5%] w-[13.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-[25] transition-all"
+          className="absolute left-[57.5%] top-[54.5%] w-[12.8%] h-[20.0%] rounded-2xl bg-transparent hover:bg-orange-400/15 hover:ring-2 hover:ring-amber-300/70 cursor-pointer z-[25] transition-all"
         >
           <span className="sr-only">Rebus Jamu</span>
         </button>
@@ -605,9 +609,9 @@ export default function Level2NgolahJamuPage() {
             onClick={() => {
               setToast({ type: 'info', text: item.info });
             }}
-            style={{ left: item.left }}
+            style={{ left: item.left, width: item.width }}
             title={item.name}
-            className="absolute top-[73.5%] w-[13.2%] h-[22.5%] rounded-2xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-[25] transition-all"
+            className="absolute top-[73.5%] h-[22.5%] rounded-2xl bg-transparent hover:bg-yellow-400/10 hover:ring-2 hover:ring-yellow-300/70 cursor-pointer z-[25] transition-all"
           >
             <span className="sr-only">{item.name}</span>
           </button>
@@ -646,20 +650,20 @@ export default function Level2NgolahJamuPage() {
         })}
 
         {/* ========================================================
-            ANALOG KONTROLER NGULEK JAMU & TOMBOL AKSI ING POJOK TENGEN NGISOR
+            ANALOG KONTROLER NGULEK JAMU (CEDHAK TUNGKU, ADOH SAKA TOMBOL TINDAKAKE)
            ======================================================== */}
         <div
-          className={`absolute right-[22.4%] bottom-[20.8%] z-[35] pointer-events-none px-2 py-0.5 rounded-full border text-[8px] sm:text-[10px] font-bold whitespace-nowrap shadow-md transition-all ${
+          className={`absolute left-[65.0%] -translate-x-1/2 bottom-[20.4%] z-[35] pointer-events-none px-2 py-0.5 rounded-full border text-[8px] sm:text-[9.5px] font-bold whitespace-nowrap shadow-md transition-all ${
             isStep3Active && ulekProgress < 100
               ? 'bg-yellow-400 border-yellow-100 text-stone-950 animate-bounce'
               : 'bg-stone-950/90 border-yellow-500/60 text-yellow-300'
           }`}
         >
-          🕹️ Puter Analog (Ngulek)
+          🕹️ Puter Analog
         </div>
 
         <AnalogJoystick
-          className={`absolute right-[22.5%] bottom-[1.8%] w-[11.0%] h-[18.2%] min-w-[74px] min-h-[74px] z-[35] ${
+          className={`absolute left-[59.9%] bottom-[2.2%] w-[10.2%] h-[17.5%] min-w-[70px] min-h-[70px] z-[35] ${
             isStep3Active && ulekProgress < 100
               ? 'ring-2 ring-yellow-400 shadow-[0_0_20px_rgba(250,204,21,0.65)]'
               : ''
